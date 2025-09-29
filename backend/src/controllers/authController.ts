@@ -1,0 +1,72 @@
+import { Request, Response, NextFunction } from 'express';
+import { AuthService } from '../services/authService';
+import { LoginRequest, RegisterRequest } from '../models';
+
+export class AuthController {
+  private authService: AuthService;
+
+  constructor() {
+    this.authService = new AuthService();
+  }
+
+  login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const loginData: LoginRequest = req.body;
+      
+      if (!loginData.email || !loginData.password) {
+        res.status(400).json({ error: 'Email and password are required' });
+        return;
+      }
+
+      const result = await this.authService.login(loginData);
+      
+      res.status(200).json({
+        message: 'Login successful',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const registerData: RegisterRequest = req.body;
+      
+      if (!registerData.name || !registerData.email || !registerData.password) {
+        res.status(400).json({ error: 'Name, email, and password are required' });
+        return;
+      }
+
+      const result = await this.authService.register(registerData);
+      
+      res.status(201).json({
+        message: 'Registration successful',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // The user ID comes from the JWT token (set by auth middleware)
+      const userId = (req as any).user?.userId;
+      
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const user = await this.authService.getUserById(userId);
+      
+      res.status(200).json({
+        message: 'Profile retrieved successfully',
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+}

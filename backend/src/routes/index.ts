@@ -1,0 +1,24 @@
+import { Router } from 'express';
+import authRoutes from './authRoutes';
+import clientRoutes from './clientRoutes';
+import contractRoutes from './contractRoutes';
+import paymentRoutes from './paymentRoutes';
+
+const router = Router();
+
+// API routes
+router.use('/auth', authRoutes);
+router.use('/clients', clientRoutes);
+router.use('/contracts', contractRoutes);
+router.use('/payments', paymentRoutes);
+
+// Health check route
+router.get('/health', (_req, res) => {
+  res.status(200).json({
+    message: 'ERP Payment Management API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+  });
+});
+
+export default router;
