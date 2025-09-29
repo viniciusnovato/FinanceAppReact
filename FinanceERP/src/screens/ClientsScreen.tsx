@@ -1,21 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Client } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth > 768;
+const ITEMS_PER_PAGE = isTablet ? 10 : 8;
+
 const ClientsScreen: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Calculate total pages using useMemo to avoid unnecessary recalculations
+  const totalPages = useMemo(() => {
+    return Math.ceil(clients.length / ITEMS_PER_PAGE);
+  }, [clients.length]);
+
+  // Reset to first page if current page exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   useEffect(() => {
     loadClients();
@@ -87,6 +108,7 @@ const ClientsScreen: React.FC = () => {
     });
     
     setClients(sortedClients);
+    setCurrentPage(1); // Reset to first page after sorting
   };
 
   const handleRowPress = (client: Client) => {
@@ -101,16 +123,141 @@ const ClientsScreen: React.FC = () => {
     );
   };
 
-  const renderStatusBadge = (client: Client, status: string) => (
+  // Pagination functions
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return clients.slice(startIndex, endIndex);
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    const maxVisiblePages = isTablet ? 7 : 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <View style={styles.paginationContainer}>
+        <View style={styles.paginationInfo}>
+          <Text style={styles.paginationText}>
+            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, clients.length)} de {clients.length} clientes
+          </Text>
+        </View>
+        
+        <View style={styles.paginationControls}>
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+            onPress={goToPreviousPage}
+            disabled={currentPage === 1}
+          >
+            <Ionicons 
+              name="chevron-back" 
+              size={16} 
+              color={currentPage === 1 ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+
+          {startPage > 1 && (
+            <React.Fragment key="start-pagination">
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(1)}
+              >
+                <Text style={styles.paginationButtonText}>1</Text>
+              </TouchableOpacity>
+              {startPage > 2 && (
+                <Text key="start-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+            </React.Fragment>
+          )}
+
+          {pageNumbers.map((pageNumber) => (
+            <TouchableOpacity
+              key={pageNumber}
+              style={[
+                styles.paginationButton,
+                currentPage === pageNumber && styles.paginationButtonActive
+              ]}
+              onPress={() => goToPage(pageNumber)}
+            >
+              <Text style={[
+                styles.paginationButtonText,
+                currentPage === pageNumber && styles.paginationButtonTextActive
+              ]}>
+                {pageNumber}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {endPage < totalPages && (
+            <React.Fragment key="end-pagination">
+              {endPage < totalPages - 1 && (
+                <Text key="end-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(totalPages)}
+              >
+                <Text style={styles.paginationButtonText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          )}
+
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+            onPress={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color={currentPage === totalPages ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderStatusBadge = (status: string) => (
     <View style={[
       styles.statusBadge,
-      status === 'active' ? styles.activeBadge : styles.inactiveBadge
+      status === 'ativo' ? styles.activeBadge : styles.inactiveBadge
     ]}>
       <Text style={[
         styles.statusText,
-        { color: status === 'active' ? '#34C759' : '#FF3B30' }
+        { color: status === 'ativo' ? '#16A34A' : '#DC2626' }
       ]}>
-        {status === 'active' ? 'Ativo' : 'Inativo'}
+        {status}
       </Text>
     </View>
   );
@@ -119,69 +266,82 @@ const ClientsScreen: React.FC = () => {
     {
       key: 'first_name',
       title: 'Nome',
-      width: 120,
       sortable: true,
-      render: (client: Client) => `${client.first_name} ${client.last_name}`,
+      width: isTablet ? 150 : 100,
+    },
+    {
+      key: 'last_name',
+      title: 'Sobrenome',
+      sortable: true,
+      width: isTablet ? 150 : 100,
     },
     {
       key: 'email',
       title: 'Email',
-      width: 180,
       sortable: true,
+      width: isTablet ? 200 : 120,
     },
     {
       key: 'phone',
       title: 'Telefone',
-      width: 140,
-      sortable: false,
+      sortable: true,
+      width: isTablet ? 140 : 100,
     },
     {
       key: 'status',
       title: 'Status',
-      width: 100,
       sortable: true,
-      render: renderStatusBadge,
+      width: isTablet ? 100 : 80,
+      render: (client: Client, status: string) => renderStatusBadge(status),
     },
     {
       key: 'created_at',
-      title: 'Criado em',
-      width: 120,
+      title: 'Cadastro',
       sortable: true,
-      render: (client: Client) => new Date(client.created_at).toLocaleDateString('pt-BR'),
+      width: isTablet ? 120 : 90,
+      render: (client: Client, date: string) => new Date(date).toLocaleDateString('pt-BR'),
     },
   ];
 
   return (
-    <MainLayout activeRoute="Clientes">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Clientes</Text>
-          <Button
-            title="Novo Cliente"
-            onPress={() => {
-              Alert.alert('Info', 'Funcionalidade de cadastro em desenvolvimento');
-            }}
-            size="small"
-          />
-        </View>
+    <MainLayout activeRoute="Clients">
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Clientes</Text>
+            <Button
+              title="Novo Cliente"
+              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              variant="primary"
+            />
+          </View>
 
-        <DataTable
-          data={clients}
-          columns={columns}
-          loading={isLoading}
-          onRowPress={handleRowPress}
-          onSort={handleSort}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          emptyMessage="Nenhum cliente encontrado"
-          keyExtractor={(item) => item.id}
-        />
-      </View>
+          <DataTable
+            data={getCurrentPageData()}
+            columns={columns}
+            loading={isLoading}
+            onSort={handleSort}
+            onRowPress={handleRowPress}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            keyExtractor={(item) => item.id}
+          />
+
+          {renderPaginationControls()}
+        </View>
+      </ScrollView>
     </MainLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -216,6 +376,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  paginationContainer: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  paginationInfo: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  paginationButton: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  paginationButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  paginationButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  paginationEllipsis: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    paddingHorizontal: 4,
   },
 });
 

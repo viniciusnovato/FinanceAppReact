@@ -16,6 +16,14 @@ import { formatCurrency } from '../utils/currency';
 
 type PaymentFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'cancelled';
 
+const filters = [
+  { key: 'all' as PaymentFilter, label: 'Todos' },
+  { key: 'pending' as PaymentFilter, label: 'Pendentes' },
+  { key: 'paid' as PaymentFilter, label: 'Pagos' },
+  { key: 'overdue' as PaymentFilter, label: 'Atrasados' },
+  { key: 'cancelled' as PaymentFilter, label: 'Cancelados' },
+];
+
 const PaymentsScreen: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
@@ -228,64 +236,70 @@ const PaymentsScreen: React.FC = () => {
   const filters: PaymentFilter[] = ['all', 'pending', 'paid', 'overdue', 'cancelled'];
 
   return (
-    <MainLayout activeRoute="Pagamentos">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Pagamentos</Text>
-          <Button
-            title="Novo Pagamento"
-            onPress={() => {
-              Alert.alert('Info', 'Funcionalidade de cadastro em desenvolvimento');
-            }}
-            size="small"
+    <MainLayout activeRoute="Payments">
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Pagamentos</Text>
+            <Button
+              title="Novo Pagamento"
+              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              variant="primary"
+            />
+          </View>
+
+          <View style={styles.filtersContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContent}
+            >
+              {filters.map((filter) => (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[
+                    styles.filterButton,
+                    activeFilter === filter.key && styles.activeFilterButton,
+                  ]}
+                  onPress={() => setActiveFilter(filter.key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterButtonText,
+                      activeFilter === filter.key && styles.activeFilterButtonText,
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <DataTable
+            data={filteredPayments}
+            columns={columns}
+            loading={isLoading}
+            onSort={handleSort}
+            onRowPress={handleRowPress}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            keyExtractor={(item) => item.id}
           />
         </View>
-
-        <View style={styles.filtersContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {filters.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterButton,
-                  activeFilter === filter && styles.activeFilterButton,
-                ]}
-                onPress={() => setActiveFilter(filter)}
-              >
-                <Text
-                  style={[
-                    styles.filterButtonText,
-                    activeFilter === filter && styles.activeFilterButtonText,
-                  ]}
-                >
-                  {getFilterLabel(filter)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        <DataTable
-          data={filteredPayments}
-          columns={columns}
-          loading={isLoading}
-          onRowPress={handleRowPress}
-          onSort={handleSort}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          emptyMessage="Nenhum pagamento encontrado"
-          keyExtractor={(item) => item.id}
-        />
-      </View>
+      </ScrollView>
     </MainLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

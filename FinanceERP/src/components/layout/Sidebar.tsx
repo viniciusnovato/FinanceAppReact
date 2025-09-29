@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,19 +35,19 @@ const sectionTitles = {
   configuracoes: 'Configurações'
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ activeRoute }) => {
+const Sidebar: React.FC<SidebarProps> = React.memo(({ activeRoute }) => {
   const navigation = useNavigation();
-  const { logout, user } = useAuth();
+  const { logout, user, isLoading } = useAuth();
 
-  const handleMenuPress = (route: string) => {
+  const handleMenuPress = useCallback((route: string) => {
     navigation.navigate(route as never);
-  };
+  }, [navigation]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
-  };
+  }, [logout]);
 
-  const renderMenuSection = (sectionKey: string) => {
+  const renderMenuSection = useCallback((sectionKey: string) => {
     const sectionItems = menuItems.filter(item => item.section === sectionKey);
     if (sectionItems.length === 0) return null;
 
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute }) => {
         ))}
       </View>
     );
-  };
+  }, [activeRoute, handleMenuPress]);
 
   return (
     <View style={styles.sidebar}>
@@ -108,27 +108,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute }) => {
       </ScrollView>
 
       {/* User Info & Logout */}
-      <View style={styles.userSection}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </Text>
+      {!isLoading && (
+        <View style={styles.userSection}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </Text>
+            </View>
+            <View style={styles.userDetails}>
+              <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+              <Text style={styles.userRole}>Administrador</Text>
+            </View>
           </View>
-          <View style={styles.userDetails}>
-            <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
-            <Text style={styles.userRole}>Administrador</Text>
-          </View>
+          
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color="#DC3545" />
+            <Text style={styles.logoutText}>Sair</Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={18} color="#DC3545" />
-          <Text style={styles.logoutText}>Sair</Text>
-        </TouchableOpacity>
-      </View>
+      )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   sidebar: {

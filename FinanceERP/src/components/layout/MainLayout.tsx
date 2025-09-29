@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,18 +11,30 @@ interface MainLayoutProps {
   activeRoute: string;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 280; // Fixed sidebar width from Sidebar.tsx
-const isTablet = screenWidth > 768;
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children, activeRoute }) => {
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const contentWidth = screenWidth - SIDEBAR_WIDTH;
+
   return (
     <View style={styles.container}>
-      {/* Sidebar */}
-      <Sidebar activeRoute={activeRoute} />
+      {/* Sidebar - Posicionamento absoluto para independência total */}
+      <View style={styles.sidebarContainer}>
+        <Sidebar activeRoute={activeRoute} />
+      </View>
       
-      {/* Main Content */}
-      <View style={[styles.content, { width: screenWidth - SIDEBAR_WIDTH }]}>
+      {/* Main Content - Posicionamento absoluto independente do sidebar */}
+      <View style={[styles.content, { width: contentWidth, left: SIDEBAR_WIDTH }]}>
         {children}
       </View>
     </View>
@@ -32,17 +44,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, activeRoute }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
     backgroundColor: '#F8F9FA',
-    overflow: 'hidden', // Prevent overflow
+    position: 'relative', // Container relativo para posicionamento absoluto dos filhos
+  },
+  sidebarContainer: {
+    position: 'absolute', // Posicionamento absoluto para independência
+    top: 0,
+    left: 0,
+    width: SIDEBAR_WIDTH,
+    height: '100%',
+    zIndex: 10, // Z-index para garantir que fique acima do conteúdo se necessário
+    backgroundColor: '#1E293B', // Cor de fundo para evitar transparência
   },
   content: {
-    flex: 1,
+    position: 'absolute', // Posicionamento absoluto para independência
+    top: 0,
+    height: '100%',
     backgroundColor: '#F8F9FA',
-    minHeight: '100%',
-    overflow: 'hidden', // Prevent content overflow
-    paddingHorizontal: isTablet ? 24 : 16, // Responsive padding
-    paddingVertical: isTablet ? 24 : 16,
+    overflow: 'scroll', // Enable scroll for main content
   },
 });
 

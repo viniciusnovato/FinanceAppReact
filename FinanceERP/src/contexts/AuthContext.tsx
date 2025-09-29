@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContextType, User } from '../types';
 import ApiService from '../services/api';
@@ -17,7 +17,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthState();
   }, []);
 
-  const checkAuthState = async () => {
+  const checkAuthState = useCallback(async () => {
     try {
       console.log('🔍 Checking auth state...');
       const token = await AsyncStorage.getItem('auth_token');
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('🔍 Parsed user data:', parsedUserData);
         
         // Validate that the user data is complete
-        if (parsedUserData && parsedUserData.id && parsedUserData.name && parsedUserData.email) {
+        if (parsedUserData && parsedUserData.id && parsedUserData.email) {
           console.log('🔍 User data is valid, setting user');
           setUser(parsedUserData);
         } else {
@@ -52,9 +52,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       setIsLoading(true);
       const response = await ApiService.login(email, password);
@@ -87,9 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user_data');
@@ -97,14 +97,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     user,
     login,
     logout,
     isLoading,
-  };
+  }), [user, login, logout, isLoading]);
 
   return (
     <AuthContext.Provider value={value}>

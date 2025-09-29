@@ -88,6 +88,16 @@ const DataTable: React.FC<DataTableProps> = ({
         const value = item[column.key];
         const content = column.render ? column.render(item, value) : value;
         
+        // Ensure content is renderable - convert objects to strings
+        let renderableContent = content;
+        if (typeof content === 'object' && content !== null && !React.isValidElement(content)) {
+          renderableContent = JSON.stringify(content);
+        } else if (content === null || content === undefined) {
+          renderableContent = '';
+        } else if (typeof content !== 'string' && typeof content !== 'number' && !React.isValidElement(content)) {
+          renderableContent = String(content);
+        }
+        
         return (
           <View
             key={column.key}
@@ -96,9 +106,13 @@ const DataTable: React.FC<DataTableProps> = ({
               { width: column.width || 100 },
             ]}
           >
-            <Text style={styles.cellText} numberOfLines={2}>
-              {content}
-            </Text>
+            {React.isValidElement(renderableContent) ? (
+              renderableContent
+            ) : (
+              <Text style={styles.cellText} numberOfLines={2}>
+                {renderableContent}
+              </Text>
+            )}
           </View>
         );
       })}

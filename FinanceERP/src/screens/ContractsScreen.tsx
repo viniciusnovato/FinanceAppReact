@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Contract } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
@@ -12,11 +16,28 @@ import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
 
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth > 768;
+const ITEMS_PER_PAGE = isTablet ? 10 : 8;
+
 const ContractsScreen: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Calculate total pages using useMemo to avoid unnecessary recalculations
+  const totalPages = useMemo(() => {
+    return Math.ceil(contracts.length / ITEMS_PER_PAGE);
+  }, [contracts.length]);
+
+  // Reset to first page if current page exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   useEffect(() => {
     loadContracts();
@@ -88,6 +109,7 @@ const ContractsScreen: React.FC = () => {
     });
     
     setContracts(sortedContracts);
+    setCurrentPage(1); // Reset to first page after sorting
   };
 
   const handleRowPress = (contract: Contract) => {
@@ -102,105 +124,240 @@ const ContractsScreen: React.FC = () => {
     );
   };
 
-  const renderStatusBadge = (contract: Contract, status: string) => (
-    <View style={[
-      styles.statusBadge,
-      status === 'active' ? styles.activeBadge : 
-      status === 'completed' ? styles.completedBadge : styles.inactiveBadge
-    ]}>
-      <Text style={[
-        styles.statusText,
-        { color: status === 'active' ? '#34C759' : 
-                 status === 'completed' ? '#007AFF' : '#FF3B30' }
-      ]}>
-        {status === 'active' ? 'Ativo' : 
-         status === 'completed' ? 'Concluído' : 'Inativo'}
-      </Text>
-    </View>
-  );
+  // Pagination functions
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return contracts.slice(startIndex, endIndex);
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    const pageNumbers = [];
+    const maxVisiblePages = isTablet ? 7 : 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <View style={styles.paginationContainer}>
+        <View style={styles.paginationInfo}>
+          <Text style={styles.paginationText}>
+            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, contracts.length)} de {contracts.length} contratos
+          </Text>
+        </View>
+        
+        <View style={styles.paginationControls}>
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+            onPress={goToPreviousPage}
+            disabled={currentPage === 1}
+          >
+            <Ionicons 
+              name="chevron-back" 
+              size={16} 
+              color={currentPage === 1 ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+
+          {startPage > 1 && (
+            <React.Fragment key="start-pagination">
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(1)}
+              >
+                <Text style={styles.paginationButtonText}>1</Text>
+              </TouchableOpacity>
+              {startPage > 2 && (
+                <Text key="start-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+            </React.Fragment>
+          )}
+
+          {pageNumbers.map((pageNumber) => (
+            <TouchableOpacity
+              key={pageNumber}
+              style={[
+                styles.paginationButton,
+                currentPage === pageNumber && styles.paginationButtonActive
+              ]}
+              onPress={() => goToPage(pageNumber)}
+            >
+              <Text style={[
+                styles.paginationButtonText,
+                currentPage === pageNumber && styles.paginationButtonTextActive
+              ]}>
+                {pageNumber}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {endPage < totalPages && (
+            <React.Fragment key="end-pagination">
+              {endPage < totalPages - 1 && (
+                <Text key="end-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(totalPages)}
+              >
+                <Text style={styles.paginationButtonText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          )}
+
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+            onPress={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color={currentPage === totalPages ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   const columns: DataTableColumn[] = [
     {
       key: 'contract_number',
       title: 'Número',
-      width: 100,
       sortable: true,
+      width: isTablet ? 120 : 80,
     },
     {
       key: 'description',
       title: 'Descrição',
-      width: 200,
       sortable: true,
+      width: isTablet ? 200 : 120,
     },
     {
-      key: 'client',
+      key: 'client_name',
       title: 'Cliente',
-      width: 140,
-      sortable: false,
-      render: (contract: Contract) => 
-        contract.client ? `${contract.client.first_name} ${contract.client.last_name}` : 'N/A',
+      sortable: true,
+      width: isTablet ? 180 : 100,
+      render: (contract: Contract) => {
+        if (contract.client) {
+          const firstName = contract.client.first_name || '';
+          const lastName = contract.client.last_name || '';
+          return `${firstName} ${lastName}`.trim() || 'N/A';
+        }
+        return 'N/A';
+      },
     },
     {
       key: 'value',
       title: 'Valor',
-      width: 120,
       sortable: true,
-      render: (contract: Contract) => formatCurrency(contract.value || 0),
+      width: isTablet ? 120 : 80,
+      render: (contract: Contract, value: number) => formatCurrency(value as number),
     },
     {
       key: 'status',
       title: 'Status',
-      width: 100,
       sortable: true,
-      render: renderStatusBadge,
+      width: isTablet ? 100 : 80,
+      render: (contract: Contract, status: string) => (
+        <View style={[
+          styles.statusBadge,
+          status === 'ativo' ? styles.activeBadge :
+          status === 'concluido' ? styles.completedBadge :
+          styles.inactiveBadge
+        ]}>
+          <Text style={[
+            styles.statusText,
+            { color: status === 'ativo' ? '#16A34A' : status === 'concluido' ? '#2563EB' : '#DC2626' }
+          ]}>
+            {status}
+          </Text>
+        </View>
+      ),
     },
     {
       key: 'start_date',
       title: 'Início',
-      width: 100,
       sortable: true,
-      render: (contract: Contract) => new Date(contract.start_date || '').toLocaleDateString('pt-BR'),
+      width: isTablet ? 100 : 80,
+      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-BR'),
     },
     {
       key: 'end_date',
       title: 'Fim',
-      width: 100,
       sortable: true,
-      render: (contract: Contract) => new Date(contract.end_date || '').toLocaleDateString('pt-BR'),
+      width: isTablet ? 100 : 80,
+      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-BR'),
     },
   ];
 
   return (
-    <MainLayout activeRoute="Contratos">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Contratos</Text>
-          <Button
-            title="Novo Contrato"
-            onPress={() => {
-              Alert.alert('Info', 'Funcionalidade de cadastro em desenvolvimento');
-            }}
-            size="small"
-          />
-        </View>
+    <MainLayout activeRoute="Contracts">
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Contratos</Text>
+            <Button
+              title="Novo Contrato"
+              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              variant="primary"
+            />
+          </View>
 
-        <DataTable
-          data={contracts}
-          columns={columns}
-          loading={isLoading}
-          onRowPress={handleRowPress}
-          onSort={handleSort}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          emptyMessage="Nenhum contrato encontrado"
-          keyExtractor={(item) => item.id}
-        />
-      </View>
+          <DataTable
+            data={getCurrentPageData()}
+            columns={columns}
+            loading={isLoading}
+            onSort={handleSort}
+            onRowPress={handleRowPress}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+          />
+
+          {renderPaginationControls()}
+        </View>
+      </ScrollView>
     </MainLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -238,6 +395,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  paginationContainer: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  paginationInfo: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  paginationButton: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  paginationButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  paginationButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  paginationEllipsis: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    paddingHorizontal: 4,
   },
 });
 
