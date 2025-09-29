@@ -6,6 +6,11 @@ const API_BASE_URL = 'http://localhost:3000/api'; // Backend URL
 class ApiService {
   private async getAuthHeaders(): Promise<Record<string, string>> {
     const token = await AsyncStorage.getItem('auth_token');
+    console.log('🔑 Token retrieved from storage:', token ? 'Token exists' : 'No token found');
+    console.log('🔑 Token length:', token?.length || 0);
+    if (token) {
+      console.log('🔑 Token preview:', token.substring(0, 50) + '...');
+    }
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
@@ -18,6 +23,9 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const headers = await this.getAuthHeaders();
     
+    console.log('🌐 Making request to:', `${API_BASE_URL}${endpoint}`);
+    console.log('🌐 Request headers:', headers);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
@@ -26,11 +34,18 @@ class ApiService {
       },
     });
 
+    console.log('🌐 Response status:', response.status);
+    console.log('🌐 Response ok:', response.ok);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log('🌐 Error response:', errorText);
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('🌐 Response data:', result);
+    return result;
   }
 
   // Auth methods

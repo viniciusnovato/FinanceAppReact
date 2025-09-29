@@ -3,6 +3,7 @@ import authRoutes from './authRoutes';
 import clientRoutes from './clientRoutes';
 import contractRoutes from './contractRoutes';
 import paymentRoutes from './paymentRoutes';
+import dashboardRoutes from './dashboardRoutes';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ router.use('/auth', authRoutes);
 router.use('/clients', clientRoutes);
 router.use('/contracts', contractRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // Health check route
 router.get('/health', (_req, res) => {

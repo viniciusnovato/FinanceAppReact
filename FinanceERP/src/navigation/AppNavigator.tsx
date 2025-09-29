@@ -1,6 +1,6 @@
 import React from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
@@ -20,7 +20,7 @@ export type AuthStackParamList = {
   Login: undefined;
 };
 
-export type MainTabParamList = {
+export type MainStackParamList = {
   Dashboard: undefined;
   Clients: undefined;
   Contracts: undefined;
@@ -29,7 +29,7 @@ export type MainTabParamList = {
 
 const RootStack = createStackNavigator<RootStackParamList>();
 const AuthStack = createStackNavigator<AuthStackParamList>();
-const MainTab = createBottomTabNavigator<MainTabParamList>();
+const MainStack = createStackNavigator<MainStackParamList>();
 
 const AuthNavigator = () => {
   return (
@@ -41,59 +41,28 @@ const AuthNavigator = () => {
 
 const MainNavigator = () => {
   return (
-    <MainTab.Navigator
+    <MainStack.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#C7C7CC',
-          borderTopWidth: 1,
-        },
       }}
     >
-      <MainTab.Screen
+      <MainStack.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{
-          tabBarLabel: 'Dashboard',
-          // tabBarIcon: ({ color, size }) => (
-          //   <Icon name="dashboard" size={size} color={color} />
-          // ),
-        }}
       />
-      <MainTab.Screen
+      <MainStack.Screen
         name="Clients"
         component={ClientsScreen}
-        options={{
-          tabBarLabel: 'Clientes',
-          // tabBarIcon: ({ color, size }) => (
-          //   <Icon name="people" size={size} color={color} />
-          // ),
-        }}
       />
-      <MainTab.Screen
+      <MainStack.Screen
         name="Contracts"
         component={ContractsScreen}
-        options={{
-          tabBarLabel: 'Contratos',
-          // tabBarIcon: ({ color, size }) => (
-          //   <Icon name="description" size={size} color={color} />
-          // ),
-        }}
       />
-      <MainTab.Screen
+      <MainStack.Screen
         name="Payments"
         component={PaymentsScreen}
-        options={{
-          tabBarLabel: 'Pagamentos',
-          // tabBarIcon: ({ color, size }) => (
-          //   <Icon name="payment" size={size} color={color} />
-          // ),
-        }}
       />
-    </MainTab.Navigator>
+    </MainStack.Navigator>
   );
 };
 
@@ -101,7 +70,12 @@ const AppNavigator = () => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Carregando...</Text>
+      </View>
+    );
   }
 
   return (
@@ -114,5 +88,20 @@ const AppNavigator = () => {
     </RootStack.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+});
 
 export default AppNavigator;

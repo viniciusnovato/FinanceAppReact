@@ -13,6 +13,7 @@ export class ContractController {
       const contracts = await this.contractService.getAllContracts();
       
       res.status(200).json({
+        success: true,
         message: 'Contracts retrieved successfully',
         data: contracts,
       });
@@ -27,6 +28,7 @@ export class ContractController {
       const contract = await this.contractService.getContractById(id);
       
       res.status(200).json({
+        success: true,
         message: 'Contract retrieved successfully',
         data: contract,
       });
@@ -41,6 +43,7 @@ export class ContractController {
       const contracts = await this.contractService.getContractsByClientId(clientId);
       
       res.status(200).json({
+        success: true,
         message: 'Contracts retrieved successfully',
         data: contracts,
       });
@@ -55,6 +58,7 @@ export class ContractController {
       const contract = await this.contractService.createContract(contractData);
       
       res.status(201).json({
+        success: true,
         message: 'Contract created successfully',
         data: contract,
       });
@@ -70,6 +74,7 @@ export class ContractController {
       const contract = await this.contractService.updateContract(id, contractData);
       
       res.status(200).json({
+        success: true,
         message: 'Contract updated successfully',
         data: contract,
       });
@@ -84,6 +89,7 @@ export class ContractController {
       await this.contractService.deleteContract(id);
       
       res.status(200).json({
+        success: true,
         message: 'Contract deleted successfully',
       });
     } catch (error) {
@@ -97,6 +103,7 @@ export class ContractController {
       const contracts = await this.contractService.getContractsByStatus(status as any);
       
       res.status(200).json({
+        success: true,
         message: 'Contracts retrieved successfully',
         data: contracts,
       });

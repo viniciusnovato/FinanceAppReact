@@ -43,8 +43,8 @@ const LoginScreen: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: yupResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: 'admin@institutoareluna.pt',
+      password: 'admin123',
     },
   });
 

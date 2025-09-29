@@ -15,16 +15,23 @@ export class AuthService {
     const { email, password } = loginData;
 
     try {
+      console.log('=== LOGIN ATTEMPT ===');
+      console.log('Email:', email);
+      console.log('Password length:', password.length);
+      console.log('Supabase URL:', process.env.SUPABASE_URL);
+      console.log('Has Service Role Key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+      
       // Use Supabase Auth to sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      console.log('Auth data:', authData);
-      console.log('Auth error:', authError);
+      console.log('Auth data:', JSON.stringify(authData, null, 2));
+      console.log('Auth error:', JSON.stringify(authError, null, 2));
 
       if (authError || !authData.user) {
+        console.log('Authentication failed - throwing error');
         throw createError('Invalid credentials', 401);
       }
 

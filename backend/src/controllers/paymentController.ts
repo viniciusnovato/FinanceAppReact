@@ -13,6 +13,7 @@ export class PaymentController {
       const payments = await this.paymentService.getAllPayments();
       
       res.status(200).json({
+        success: true,
         message: 'Payments retrieved successfully',
         data: payments,
       });
@@ -27,6 +28,7 @@ export class PaymentController {
       const payment = await this.paymentService.getPaymentById(id);
       
       res.status(200).json({
+        success: true,
         message: 'Payment retrieved successfully',
         data: payment,
       });
@@ -41,6 +43,7 @@ export class PaymentController {
       const payments = await this.paymentService.getPaymentsByContractId(contractId);
       
       res.status(200).json({
+        success: true,
         message: 'Payments retrieved successfully',
         data: payments,
       });
@@ -55,6 +58,7 @@ export class PaymentController {
       const payment = await this.paymentService.createPayment(paymentData);
       
       res.status(201).json({
+        success: true,
         message: 'Payment created successfully',
         data: payment,
       });
@@ -70,6 +74,7 @@ export class PaymentController {
       const payment = await this.paymentService.updatePayment(id, paymentData);
       
       res.status(200).json({
+        success: true,
         message: 'Payment updated successfully',
         data: payment,
       });
@@ -84,6 +89,7 @@ export class PaymentController {
       await this.paymentService.deletePayment(id);
       
       res.status(200).json({
+        success: true,
         message: 'Payment deleted successfully',
       });
     } catch (error) {
@@ -97,6 +103,7 @@ export class PaymentController {
       const payments = await this.paymentService.getPaymentsByStatus(status as any);
       
       res.status(200).json({
+        success: true,
         message: 'Payments retrieved successfully',
         data: payments,
       });
@@ -110,6 +117,7 @@ export class PaymentController {
       const payments = await this.paymentService.getOverduePayments();
       
       res.status(200).json({
+        success: true,
         message: 'Overdue payments retrieved successfully',
         data: payments,
       });
@@ -124,6 +132,7 @@ export class PaymentController {
       const payment = await this.paymentService.markPaymentAsPaid(id);
       
       res.status(200).json({
+        success: true,
         message: 'Payment marked as paid successfully',
         data: payment,
       });
@@ -137,6 +146,7 @@ export class PaymentController {
       const statistics = await this.paymentService.getPaymentStatistics();
       
       res.status(200).json({
+        success: true,
         message: 'Payment statistics retrieved successfully',
         data: statistics,
       });

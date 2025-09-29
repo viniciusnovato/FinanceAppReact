@@ -63,10 +63,14 @@ export interface User {
 }
 
 export interface DashboardStats {
-  activeClients: number;
+  totalClients: number;
+  totalContracts: number;
   activeContracts: number;
+  totalPayments: number;
+  totalRevenue: number;
   pendingPayments: number;
   overduePayments: number;
+  activeClients: number;
   totalReceived: number;
   monthlyRevenue: number;
 }
