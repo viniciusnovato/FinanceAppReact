@@ -41,6 +41,35 @@ export class ClientService {
       }
     }
 
+    // Validate birth_date format if provided
+    if (clientData.birth_date !== undefined) {
+      // If birth_date is empty string, set it to null
+      if (clientData.birth_date === '') {
+        clientData.birth_date = null as any;
+      } else if (clientData.birth_date) {
+        // Validate date format (DD/MM/YYYY or YYYY-MM-DD)
+        const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+        if (!dateRegex.test(clientData.birth_date)) {
+          throw createError('Invalid birth date format. Use DD/MM/YYYY or YYYY-MM-DD', 400);
+        }
+        
+        // Try to parse the date to ensure it's valid
+        let parsedDate: Date;
+        if (clientData.birth_date.includes('/')) {
+          // DD/MM/YYYY format
+          const [day, month, year] = clientData.birth_date.split('/');
+          parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          // YYYY-MM-DD format
+          parsedDate = new Date(clientData.birth_date);
+        }
+        
+        if (isNaN(parsedDate.getTime())) {
+          throw createError('Invalid birth date', 400);
+        }
+      }
+    }
+
     return this.clientRepository.create(clientData);
   }
 
@@ -61,6 +90,35 @@ export class ClientService {
       const existingEmailClient = await this.clientRepository.findByEmail(clientData.email);
       if (existingEmailClient && existingEmailClient.id !== id) {
         throw createError('Client with this email already exists', 409);
+      }
+    }
+
+    // Validate birth_date format if provided
+    if (clientData.birth_date !== undefined) {
+      // If birth_date is empty string, set it to null
+      if (clientData.birth_date === '') {
+        clientData.birth_date = null as any;
+      } else if (clientData.birth_date) {
+        // Validate date format (DD/MM/YYYY or YYYY-MM-DD)
+        const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+        if (!dateRegex.test(clientData.birth_date)) {
+          throw createError('Invalid birth date format. Use DD/MM/YYYY or YYYY-MM-DD', 400);
+        }
+        
+        // Try to parse the date to ensure it's valid
+        let parsedDate: Date;
+        if (clientData.birth_date.includes('/')) {
+          // DD/MM/YYYY format
+          const [day, month, year] = clientData.birth_date.split('/');
+          parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          // YYYY-MM-DD format
+          parsedDate = new Date(clientData.birth_date);
+        }
+        
+        if (isNaN(parsedDate.getTime())) {
+          throw createError('Invalid birth date', 400);
+        }
       }
     }
 
