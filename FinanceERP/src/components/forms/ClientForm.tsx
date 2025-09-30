@@ -102,7 +102,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
     }
 
     if (formData.mobile && !/^\+?[\d\s\-\(\)]+$/.test(formData.mobile)) {
-      newErrors.mobile = 'Celular inválido';
+      newErrors.mobile = 'Telemóvel inválido';
     }
 
     setErrors(newErrors);
@@ -202,11 +202,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
               />
 
               <Input
-                label="Celular"
+                label="Telemóvel"
                 value={formData.mobile}
                 onChangeText={(value) => updateField('mobile', value)}
                 error={errors.mobile}
-                placeholder="Digite o celular"
+                placeholder="Digite o telemóvel"
                 keyboardType="phone-pad"
               />
             </View>

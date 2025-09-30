@@ -169,13 +169,18 @@ const ContractsScreen: React.FC = () => {
         if (response.success && response.data) {
           setContracts(contracts.map(c => c.id === editingContract.id ? response.data : c));
           Alert.alert('Sucesso', 'Contrato actualizado com sucesso');
+        } else {
+          Alert.alert('Erro', 'Não foi possível actualizar o contrato');
         }
       } else {
         // Create new contract
         const response = await ApiService.createContract(contractData);
         if (response.success && response.data) {
-          setContracts([...contracts, response.data]);
+          // Reload the complete list from server to ensure data consistency
+          await loadContracts();
           Alert.alert('Sucesso', 'Contrato criado com sucesso');
+        } else {
+          Alert.alert('Erro', 'Não foi possível criar o contrato');
         }
       }
       

@@ -115,13 +115,18 @@ const ClientsScreen: React.FC = () => {
         if (response.success && response.data) {
           setClients(clients.map(c => c.id === editingClient.id ? response.data : c));
           Alert.alert('Sucesso', 'Cliente actualizado com sucesso');
+        } else {
+          Alert.alert('Erro', 'Não foi possível actualizar o cliente');
         }
       } else {
         // Create new client
         const response = await ApiService.createClient(clientData);
         if (response.success && response.data) {
-          setClients([...clients, response.data]);
+          // Reload the complete list from server to ensure data consistency
+          await loadClients();
           Alert.alert('Sucesso', 'Cliente criado com sucesso');
+        } else {
+          Alert.alert('Erro', 'Não foi possível criar o cliente');
         }
       }
       
