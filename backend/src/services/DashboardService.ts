@@ -70,7 +70,7 @@ export class DashboardService {
       const { count: activeContracts } = await supabase
         .from('contracts')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'ativo');
 
       // Obter receita mensal dos últimos 6 meses
       const monthlyRevenue = await this.getMonthlyRevenue();

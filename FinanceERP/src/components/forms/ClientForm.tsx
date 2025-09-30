@@ -42,7 +42,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
     postal_code: '',
     country: '',
     notes: '',
-    status: 'active',
+    status: 'ativo',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,7 +63,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
         postal_code: client.postal_code || '',
         country: client.country || '',
         notes: client.notes || '',
-        status: client.status || 'active',
+        status: client.status || 'ativo',
       });
     } else {
       // Reset form for new client
@@ -81,7 +81,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
         postal_code: '',
         country: '',
         notes: '',
-        status: 'active',
+        status: 'ativo',
       });
     }
     setErrors({});

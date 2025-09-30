@@ -34,6 +34,23 @@ export class ContractService {
     return this.contractRepository.findByClientId(clientId);
   }
 
+  // Helper function to convert DD/MM/YYYY to YYYY-MM-DD
+  private convertDateFormat(dateString: string): string {
+    if (!dateString) return dateString;
+    
+    // Check if it's DD/MM/YYYY format
+    const ddmmyyyyRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = dateString.match(ddmmyyyyRegex);
+    
+    if (match) {
+      const [, day, month, year] = match;
+      return `${year}-${month}-${day}`;
+    }
+    
+    // If it's already in YYYY-MM-DD format or other format, return as is
+    return dateString;
+  }
+
   async createContract(contractData: Omit<Contract, 'id' | 'created_at' | 'updated_at'>): Promise<Contract> {
     // Validate required fields
     if (!contractData.client_id || !contractData.value) {
@@ -51,17 +68,47 @@ export class ContractService {
       throw createError('Client not found', 404);
     }
 
+    // Process date fields - convert empty strings to null and format dates
+    const processedData = { ...contractData } as any;
+    
+    if (processedData.start_date === '') {
+      processedData.start_date = null;
+    } else if (processedData.start_date) {
+      processedData.start_date = this.convertDateFormat(processedData.start_date);
+    }
+    
+    if (processedData.end_date === '') {
+      processedData.end_date = null;
+    } else if (processedData.end_date) {
+      processedData.end_date = this.convertDateFormat(processedData.end_date);
+    }
+
+    // Validate date formats if they are provided
+    if (processedData.start_date && typeof processedData.start_date === 'string') {
+      const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+      if (!dateRegex.test(processedData.start_date)) {
+        throw createError('Start date must be in DD/MM/YYYY or YYYY-MM-DD format', 400);
+      }
+    }
+
+    if (processedData.end_date && typeof processedData.end_date === 'string') {
+      const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+      if (!dateRegex.test(processedData.end_date)) {
+        throw createError('End date must be in DD/MM/YYYY or YYYY-MM-DD format', 400);
+      }
+    }
+
     // Validate dates
-    if (contractData.start_date && contractData.end_date) {
-      const startDate = new Date(contractData.start_date);
-      const endDate = new Date(contractData.end_date);
+    if (processedData.start_date && processedData.end_date) {
+      const startDate = new Date(processedData.start_date);
+      const endDate = new Date(processedData.end_date);
       
       if (endDate <= startDate) {
         throw createError('End date must be after start date', 400);
       }
     }
 
-    return this.contractRepository.create(contractData);
+    return this.contractRepository.create(processedData);
   }
 
   async updateContract(id: string, contractData: Partial<Omit<Contract, 'id' | 'created_at' | 'updated_at'>>): Promise<Contract> {
@@ -84,10 +131,40 @@ export class ContractService {
       }
     }
 
+    // Process date fields - convert empty strings to null and format dates
+    const processedData = { ...contractData } as any;
+    
+    if (processedData.start_date === '') {
+      processedData.start_date = null;
+    } else if (processedData.start_date) {
+      processedData.start_date = this.convertDateFormat(processedData.start_date);
+    }
+    
+    if (processedData.end_date === '') {
+      processedData.end_date = null;
+    } else if (processedData.end_date) {
+      processedData.end_date = this.convertDateFormat(processedData.end_date);
+    }
+
+    // Validate date formats if they are provided
+    if (processedData.start_date && typeof processedData.start_date === 'string') {
+      const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+      if (!dateRegex.test(processedData.start_date)) {
+        throw createError('Start date must be in DD/MM/YYYY or YYYY-MM-DD format', 400);
+      }
+    }
+
+    if (processedData.end_date && typeof processedData.end_date === 'string') {
+      const dateRegex = /^(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})$/;
+      if (!dateRegex.test(processedData.end_date)) {
+        throw createError('End date must be in DD/MM/YYYY or YYYY-MM-DD format', 400);
+      }
+    }
+
     // Validate dates if being updated
-    if (contractData.start_date || contractData.end_date) {
-      const startDateValue = contractData.start_date || existingContract.start_date;
-      const endDateValue = contractData.end_date || existingContract.end_date;
+    if (processedData.start_date || processedData.end_date) {
+      const startDateValue = processedData.start_date || existingContract.start_date;
+      const endDateValue = processedData.end_date || existingContract.end_date;
       
       if (startDateValue && endDateValue) {
         const startDate = new Date(startDateValue);
@@ -99,7 +176,7 @@ export class ContractService {
       }
     }
 
-    const updatedContract = await this.contractRepository.update(id, contractData);
+    const updatedContract = await this.contractRepository.update(id, processedData);
     if (!updatedContract) {
       throw createError('Failed to update contract', 500);
     }

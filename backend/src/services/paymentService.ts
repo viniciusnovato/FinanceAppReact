@@ -61,7 +61,13 @@ export class PaymentService {
       paymentData.status = 'overdue';
     }
 
-    return this.paymentRepository.create(paymentData);
+    // Clean up empty string fields to prevent enum errors
+    const cleanedData = {
+      ...paymentData,
+      notes: paymentData.notes === '' ? undefined : paymentData.notes,
+    };
+
+    return this.paymentRepository.create(cleanedData);
   }
 
   async updatePayment(id: string, paymentData: Partial<Omit<Payment, 'id' | 'created_at' | 'updated_at'>>): Promise<Payment> {
@@ -89,7 +95,13 @@ export class PaymentService {
       paymentData.paid_date = new Date();
     }
 
-    const updatedPayment = await this.paymentRepository.update(id, paymentData);
+    // Clean up empty string fields to prevent enum errors
+    const cleanedData = {
+      ...paymentData,
+      notes: paymentData.notes === '' ? undefined : paymentData.notes,
+    };
+
+    const updatedPayment = await this.paymentRepository.update(id, cleanedData);
     if (!updatedPayment) {
       throw createError('Failed to update payment', 500);
     }

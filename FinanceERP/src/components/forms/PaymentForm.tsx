@@ -128,6 +128,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         ...formData,
         amount: Number(formData.amount),
         paid_date: formData.paid_date || undefined,
+        payment_type: formData.payment_type || undefined, // Convert empty string to undefined
+        payment_method: formData.payment_method || undefined, // Convert empty string to undefined
+        notes: formData.notes || undefined, // Convert empty string to undefined
       };
 
       await onSubmit(paymentData);

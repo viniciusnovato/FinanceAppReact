@@ -89,5 +89,5 @@ export interface ApiResponse<T> {
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
-export type ContractStatus = 'active' | 'completed' | 'cancelled' | 'draft';
-export type ClientStatus = 'active' | 'inactive' | 'prospect';
+export type ContractStatus = 'ativo' | 'completed' | 'cancelled' | 'draft';
+export type ClientStatus = 'ativo' | 'inactive' | 'prospect';
