@@ -199,7 +199,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     { value: 'pending', label: 'Pendente' },
     { value: 'paid', label: 'Pago' },
     { value: 'overdue', label: 'Atrasado' },
-    { value: 'cancelled', label: 'Cancelado' },
+    { value: 'failed', label: 'Falhou' },
   ];
 
   const paymentTypeOptions = [

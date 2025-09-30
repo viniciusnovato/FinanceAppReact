@@ -25,7 +25,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
 const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
-type PaymentFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+type PaymentFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed';
 type PaymentsScreenRouteProp = RouteProp<MainStackParamList, 'Payments'>;
 
 const filters = [
@@ -33,7 +33,7 @@ const filters = [
   { key: 'pending' as PaymentFilter, label: 'Pendentes' },
   { key: 'paid' as PaymentFilter, label: 'Pagos' },
   { key: 'overdue' as PaymentFilter, label: 'Atrasados' },
-  { key: 'cancelled' as PaymentFilter, label: 'Cancelados' },
+  { key: 'failed' as PaymentFilter, label: 'Falhou' },
 ];
 
 const PaymentsScreen: React.FC = () => {
@@ -452,7 +452,7 @@ const PaymentsScreen: React.FC = () => {
       styles.statusBadge,
       status === 'paid' ? styles.paidBadge : 
       status === 'pending' ? styles.pendingBadge :
-      status === 'overdue' ? styles.overdueBadge : styles.cancelledBadge
+      status === 'overdue' ? styles.overdueBadge : styles.failedBadge
     ]}>
       <Text style={[
         styles.statusText,
@@ -473,7 +473,7 @@ const PaymentsScreen: React.FC = () => {
       case 'pending': return 'Pendentes';
       case 'paid': return 'Pagos';
       case 'overdue': return 'Atrasados';
-      case 'cancelled': return 'Cancelados';
+      case 'failed': return 'Falhou';
       default: return filter;
     }
   };
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
   overdueBadge: {
     backgroundColor: '#FEE2E2',
   },
-  cancelledBadge: {
+  failedBadge: {
     backgroundColor: '#F1F5F9',
   },
   statusText: {

@@ -175,7 +175,7 @@ export class DashboardService {
       }));
 
       // Adicionar status com count 0 se não existirem
-      const allStatuses = ['paid', 'pending', 'overdue', 'cancelled'];
+      const allStatuses = ['paid', 'pending', 'overdue', 'failed'];
       allStatuses.forEach(status => {
         if (!result.find(item => item.status === status)) {
           result.push({ status, count: 0 });
