@@ -7,6 +7,12 @@ export interface PaginationOptions {
   offset?: number;
 }
 
+export interface PaymentFilters {
+  status?: string;
+  search?: string;
+  contractId?: string;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -40,20 +46,15 @@ export class PaymentRepository {
     }
   }
 
-  async findAllPaginated(options: PaginationOptions = {}): Promise<PaginatedResult<Payment>> {
+  async findAllPaginated(options: PaginationOptions = {}, filters: PaymentFilters = {}): Promise<PaginatedResult<Payment>> {
     try {
       const { page = 1, limit = 50 } = options;
+      const { status, search, contractId } = filters;
       const offset = (page - 1) * limit;
 
-      // Primeiro, obter o total de registros
-      const { count, error: countError } = await supabase
-        .from('payments')
-        .select('*', { count: 'exact', head: true });
-
-      if (countError) throw countError;
-
-      // Depois, obter os dados paginados
-      const { data, error } = await supabase
+      // Construir query base
+      let countQuery = supabase.from('payments').select('*', { count: 'exact', head: true });
+      let dataQuery = supabase
         .from('payments')
         .select(`
           *,
@@ -61,7 +62,32 @@ export class PaymentRepository {
             *,
             client:clients(*)
           )
-        `)
+        `);
+
+      // Aplicar filtros
+      if (status) {
+        countQuery = countQuery.eq('status', status);
+        dataQuery = dataQuery.eq('status', status);
+      }
+
+      if (contractId) {
+        countQuery = countQuery.eq('contract_id', contractId);
+        dataQuery = dataQuery.eq('contract_id', contractId);
+      }
+
+      if (search) {
+        // Buscar por descrição ou valor
+        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0}`;
+        countQuery = countQuery.or(searchFilter);
+        dataQuery = dataQuery.or(searchFilter);
+      }
+
+      // Executar query de contagem
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      // Executar query de dados com paginação
+      const { data, error } = await dataQuery
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -129,21 +155,20 @@ export class PaymentRepository {
     }
   }
 
-  async findByContractIdPaginated(contractId: string, options: PaginationOptions = {}): Promise<PaginatedResult<Payment>> {
+  async findByContractIdPaginated(contractId: string, options: PaginationOptions = {}, filters: PaymentFilters = {}): Promise<PaginatedResult<Payment>> {
     try {
       const { page = 1, limit = 50 } = options;
+      const { status, search } = filters;
       const offset = (page - 1) * limit;
 
-      // Primeiro, obter o total de registros para este contrato
-      const { count, error: countError } = await supabase
+      // Construir query base para contagem
+      let countQuery = supabase
         .from('payments')
         .select('*', { count: 'exact', head: true })
         .eq('contract_id', contractId);
 
-      if (countError) throw countError;
-
-      // Depois, obter os dados paginados
-      const { data, error } = await supabase
+      // Construir query base para dados
+      let dataQuery = supabase
         .from('payments')
         .select(`
           *,
@@ -152,7 +177,26 @@ export class PaymentRepository {
             client:clients(*)
           )
         `)
-        .eq('contract_id', contractId)
+        .eq('contract_id', contractId);
+
+      // Aplicar filtros
+      if (status) {
+        countQuery = countQuery.eq('status', status);
+        dataQuery = dataQuery.eq('status', status);
+      }
+
+      if (search) {
+        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0}`;
+        countQuery = countQuery.or(searchFilter);
+        dataQuery = dataQuery.or(searchFilter);
+      }
+
+      // Executar query de contagem
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      // Executar query de dados com paginação
+      const { data, error } = await dataQuery
         .order('due_date', { ascending: true })
         .range(offset, offset + limit - 1);
 

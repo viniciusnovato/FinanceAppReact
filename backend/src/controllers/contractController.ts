@@ -97,20 +97,25 @@ export class ContractController {
     }
   };
 
-  getContractsByStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async getContractsByStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { status } = req.params;
       const contracts = await this.contractService.getContractsByStatus(status);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Contracts retrieved successfully',
-        data: contracts,
-      });
+      res.json(contracts);
     } catch (error) {
       next(error);
     }
-  };
+  }
+
+  async getContractDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const contractDetails = await this.contractService.getContractDetails(id);
+      res.json(contractDetails);
+    } catch (error) {
+      next(error);
+    }
+  }
 
   deleteContractPayments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

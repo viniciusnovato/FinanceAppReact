@@ -20,6 +20,7 @@ import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
 import ContractForm from '../components/forms/ContractForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { ContractDetailsModal } from '../components/ContractDetailsModal';
 import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -46,6 +47,10 @@ const ContractsScreen: React.FC = () => {
   // Confirm dialog states
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
+  
+  // Contract details modal states
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
@@ -200,7 +205,7 @@ const ContractsScreen: React.FC = () => {
   };
 
   const handleRowPress = (contract: Contract) => {
-    // Navigate directly to payments for this contract
+    // Navigate to payments page for this contract
     navigation.navigate('Payments', { contractId: contract.id });
   };
 
@@ -416,9 +421,18 @@ const ContractsScreen: React.FC = () => {
       key: 'actions',
       title: 'Ações',
       sortable: false,
-      width: isTablet ? 140 : 120,
+      width: isTablet ? 180 : 160,
       render: (contract: Contract) => (
         <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.viewDetailsButton]}
+            onPress={() => {
+              setSelectedContractId(contract.id);
+              setShowDetailsModal(true);
+            }}
+          >
+            <Ionicons name="eye" size={16} color="#6366F1" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.viewPaymentsButton]}
             onPress={() => navigation.navigate('Payments', { contractId: contract.id })}
@@ -495,6 +509,15 @@ const ContractsScreen: React.FC = () => {
         onConfirm={confirmDeleteContract}
         onCancel={() => setShowConfirmDialog(false)}
         isDestructive={true}
+      />
+      
+      <ContractDetailsModal
+        visible={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedContractId(null);
+        }}
+        contractId={selectedContractId}
       />
     </MainLayout>
   );
@@ -631,6 +654,10 @@ const styles = StyleSheet.create({
   viewPaymentsButton: {
     backgroundColor: '#ECFDF5',
     borderColor: '#A7F3D0',
+  },
+  viewDetailsButton: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
   },
 });
 

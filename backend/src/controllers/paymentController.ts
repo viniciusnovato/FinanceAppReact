@@ -27,7 +27,21 @@ export class PaymentController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       
-      const result = await this.paymentService.getAllPaymentsPaginated({ page, limit });
+      // Extrair filtros dos query parameters
+      const filters = {
+        status: req.query.status as string,
+        search: req.query.search as string,
+        contractId: req.query.contractId as string
+      };
+
+      // Remover filtros vazios
+      Object.keys(filters).forEach(key => {
+        if (!filters[key as keyof typeof filters]) {
+          delete filters[key as keyof typeof filters];
+        }
+      });
+      
+      const result = await this.paymentService.getAllPaymentsPaginated({ page, limit }, filters);
       
       res.status(200).json({
         success: true,
@@ -83,7 +97,20 @@ export class PaymentController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       
-      const result = await this.paymentService.getPaymentsByContractIdPaginated(contractId, { page, limit });
+      // Extrair filtros dos query parameters
+      const filters = {
+        status: req.query.status as string,
+        search: req.query.search as string
+      };
+
+      // Remover filtros vazios
+      Object.keys(filters).forEach(key => {
+        if (!filters[key as keyof typeof filters]) {
+          delete filters[key as keyof typeof filters];
+        }
+      });
+      
+      const result = await this.paymentService.getPaymentsByContractIdPaginated(contractId, { page, limit }, filters);
       
       res.status(200).json({
         success: true,

@@ -11,6 +11,7 @@ router.use(authenticateToken);
 // Contract CRUD routes
 router.get('/', contractController.getAllContracts);
 router.get('/:id', contractController.getContractById);
+router.get('/:id/details', contractController.getContractDetails);
 router.post('/', contractController.createContract);
 router.put('/:id', contractController.updateContract);
 router.delete('/:id', contractController.deleteContract);

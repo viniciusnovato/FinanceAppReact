@@ -98,11 +98,16 @@ class ApiService {
   }
 
   async getContract(id: string): Promise<ApiResponse<Contract>> {
-    return this.request(`/contracts/${id}`);
+    return this.request<Contract>(`/contracts/${id}`);
+  }
+
+  async getContractDetails(id: string): Promise<any> {
+    const response = await this.request<any>(`/contracts/${id}/details`);
+    return response.data;
   }
 
   async getContractsByClient(clientId: string): Promise<ApiResponse<Contract[]>> {
-    return this.request(`/contracts?client_id=${clientId}`);
+    return this.request<Contract[]>(`/contracts/client/${clientId}`);
   }
 
   async createContract(contract: Omit<Contract, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Contract>> {
@@ -130,7 +135,15 @@ class ApiService {
     return this.request('/payments');
   }
 
-  async getPaymentsPaginated(page: number = 1, limit: number = 1000): Promise<ApiResponse<{
+  async getPaymentsPaginated(
+    page: number = 1, 
+    limit: number = 10, 
+    filters?: {
+      status?: string;
+      search?: string;
+      contractId?: string;
+    }
+  ): Promise<ApiResponse<{
     data: Payment[];
     total: number;
     page: number;
@@ -139,7 +152,15 @@ class ApiService {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   }>> {
-    return this.request(`/payments/paginated?page=${page}&limit=${limit}`);
+    let url = `/payments/paginated?page=${page}&limit=${limit}`;
+    
+    if (filters) {
+      if (filters.status) url += `&status=${encodeURIComponent(filters.status)}`;
+      if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+      if (filters.contractId) url += `&contractId=${encodeURIComponent(filters.contractId)}`;
+    }
+    
+    return this.request(url);
   }
 
   async getPayment(id: string): Promise<ApiResponse<Payment>> {
@@ -150,7 +171,15 @@ class ApiService {
     return this.request(`/payments/contract/${contractId}`);
   }
 
-  async getPaymentsByContractPaginated(contractId: string, page: number = 1, limit: number = 1000): Promise<ApiResponse<{
+  async getPaymentsByContractPaginated(
+    contractId: string, 
+    page: number = 1, 
+    limit: number = 10,
+    filters?: {
+      status?: string;
+      search?: string;
+    }
+  ): Promise<ApiResponse<{
     data: Payment[];
     total: number;
     page: number;
@@ -159,7 +188,14 @@ class ApiService {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   }>> {
-    return this.request(`/payments/contract/${contractId}/paginated?page=${page}&limit=${limit}`);
+    let url = `/payments/contract/${contractId}/paginated?page=${page}&limit=${limit}`;
+    
+    if (filters) {
+      if (filters.status) url += `&status=${encodeURIComponent(filters.status)}`;
+      if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+    }
+    
+    return this.request(url);
   }
 
   async createPayment(payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Payment>> {

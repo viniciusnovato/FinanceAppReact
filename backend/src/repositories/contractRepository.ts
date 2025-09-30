@@ -136,4 +136,63 @@ export class ContractRepository {
       throw new Error('Failed to fetch contracts by status');
     }
   }
+
+  async findContractDetails(id: string): Promise<any> {
+    try {
+      // Get contract with client and all payments
+      const { data: contract, error: contractError } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          client:clients(*),
+          payments(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (contractError && contractError.code !== 'PGRST116') throw contractError;
+      if (!contract) return null;
+
+      // Calculate paid percentage
+      const downPayment = parseFloat(contract.down_payment || '0');
+      const contractValue = parseFloat(contract.value || '0');
+      
+      // Sum all paid payments (including complementary payments)
+      const paidPayments = contract.payments?.filter((payment: any) => payment.status === 'paid') || [];
+      const totalPaidFromPayments = paidPayments.reduce((sum: number, payment: any) => {
+        return sum + parseFloat(payment.amount || '0');
+      }, 0);
+
+      const totalPaid = downPayment + totalPaidFromPayments;
+      const paidPercentage = contractValue > 0 ? (totalPaid / contractValue) * 100 : 0;
+
+      // Organize payments by type
+      const regularPayments = contract.payments?.filter((payment: any) => 
+        !payment.payment_type || payment.payment_type === 'installment'
+      ) || [];
+      
+      const complementaryPayments = contract.payments?.filter((payment: any) => 
+        payment.payment_type && payment.payment_type.startsWith('comp')
+      ) || [];
+
+      return {
+        ...contract,
+        paidPercentage: Math.round(paidPercentage * 100) / 100, // Round to 2 decimal places
+        totalPaid,
+        totalPaidFromPayments,
+        regularPayments,
+        complementaryPayments,
+        paymentsSummary: {
+          total: contract.payments?.length || 0,
+          paid: paidPayments.length,
+          pending: contract.payments?.filter((payment: any) => payment.status === 'pending').length || 0,
+          overdue: contract.payments?.filter((payment: any) => payment.status === 'overdue').length || 0,
+          failed: contract.payments?.filter((payment: any) => payment.status === 'failed').length || 0
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching contract details:', error);
+      throw new Error('Failed to fetch contract details');
+    }
+  }
 }

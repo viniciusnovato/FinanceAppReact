@@ -208,6 +208,14 @@ export class ContractService {
     return this.contractRepository.findByStatus(status);
   }
 
+  async getContractDetails(id: string): Promise<any> {
+    const contractDetails = await this.contractRepository.findContractDetails(id);
+    if (!contractDetails) {
+      throw createError('Contract not found', 404);
+    }
+    return contractDetails;
+  }
+
   /**
    * Gera pagamentos automáticos para um contrato
    * Baseado nas regras de negócio definidas no newFunctionality.md

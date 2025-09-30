@@ -40,7 +40,6 @@ const PaymentsScreen: React.FC = () => {
   const route = useRoute<PaymentsScreenRouteProp>();
   const contractId = route.params?.contractId;
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<PaymentFilter>('all');
@@ -48,6 +47,12 @@ const PaymentsScreen: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [contractNumber, setContractNumber] = useState<string>('');
+  
+  // Pagination state from backend
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
   
   // Payment form state
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -58,95 +63,80 @@ const PaymentsScreen: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
 
-  // Calculate total pages using useMemo to avoid unnecessary recalculations
-  const totalPages = useMemo(() => {
-    return Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
-  }, [filteredPayments.length]);
-
-  // Reset to first page if current page exceeds total pages
+  // Reset to first page when filters change
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [totalPages, currentPage]);
+    setCurrentPage(1);
+  }, [activeFilter, searchQuery, contractId]);
 
+  // Load payments when page or filters change
   useEffect(() => {
     loadPayments();
-  }, []);
-
-  useEffect(() => {
-    filterPayments();
-  }, [payments, activeFilter, searchQuery]);
+  }, [currentPage, activeFilter, searchQuery, contractId]);
 
   const loadPayments = async () => {
     try {
       setIsLoading(true);
       
+      // Prepare filters
+      const filters: any = {};
+      
+      if (activeFilter !== 'all') {
+        filters.status = activeFilter;
+      }
+      
+      if (searchQuery.trim()) {
+        filters.search = searchQuery.trim();
+      }
+      
       if (contractId) {
-        // Load payments for specific contract using pagination to get all payments
+        // Load payments for specific contract using pagination
         console.log('🔍 Loading payments for contract:', contractId);
         
-        let allContractPayments: Payment[] = [];
-        let page = 1;
-        let hasMore = true;
+        const response = await ApiService.getPaymentsByContractPaginated(
+          contractId, 
+          currentPage, 
+          ITEMS_PER_PAGE,
+          filters
+        );
         
-        while (hasMore) {
-          const response = await ApiService.getPaymentsByContractPaginated(contractId, page, 1000);
+        if (response.success && response.data) {
+          setPayments(response.data.data);
+          setTotalPages(response.data.totalPages);
+          setTotalItems(response.data.total);
+          setHasNextPage(response.data.hasNextPage);
+          setHasPreviousPage(response.data.hasPreviousPage);
           
-          if (response.success && response.data) {
-            allContractPayments.push(...response.data.data);
-            hasMore = response.data.hasNextPage;
-            page++;
-            
-            console.log(`📄 Loaded page ${page - 1}: ${response.data.data.length} payments, Total so far: ${allContractPayments.length}`);
-          } else {
-            hasMore = false;
-          }
+          console.log(`✅ Loaded ${response.data.data.length} payments for contract (page ${currentPage}/${response.data.totalPages})`);
           
-          // Safety break to avoid infinite loops
-          if (page > 50) {
-            console.warn('⚠️ Stopped loading after 50 pages to prevent infinite loop');
-            break;
+          // Find the contract number for display purposes
+          if (response.data.data.length > 0 && response.data.data[0].contract?.contract_number) {
+            setContractNumber(response.data.data[0].contract.contract_number);
           }
-        }
-        
-        setPayments(allContractPayments);
-        console.log(`✅ Total payments loaded for contract: ${allContractPayments.length}`);
-        
-        // Find the contract number for display purposes
-        if (allContractPayments.length > 0 && allContractPayments[0].contract?.contract_number) {
-          setContractNumber(allContractPayments[0].contract.contract_number);
         }
       } else {
-        // Load all payments using pagination to get all payments
-        console.log('🔍 Loading all payments with pagination...');
+        // Load all payments using pagination with filters
+        console.log('🔍 Loading all payments with pagination and filters...');
         
-        let allPayments: Payment[] = [];
-        let page = 1;
-        let hasMore = true;
-        
-        while (hasMore) {
-          const response = await ApiService.getPaymentsPaginated(page, 1000);
-          
-          if (response.success && response.data) {
-            allPayments.push(...response.data.data);
-            hasMore = response.data.hasNextPage;
-            page++;
-            
-            console.log(`📄 Loaded page ${page - 1}: ${response.data.data.length} payments, Total so far: ${allPayments.length}`);
-          } else {
-            hasMore = false;
-          }
-          
-          // Safety break to avoid infinite loops
-          if (page > 50) {
-            console.warn('⚠️ Stopped loading after 50 pages to prevent infinite loop');
-            break;
-          }
+        // Add contractId filter if needed
+        if (contractId) {
+          filters.contractId = contractId;
         }
         
-        setPayments(allPayments);
-        console.log(`✅ Total payments loaded: ${allPayments.length}`);
+        const response = await ApiService.getPaymentsPaginated(
+          currentPage, 
+          ITEMS_PER_PAGE, 
+          filters
+        );
+        
+        if (response.success && response.data) {
+          setPayments(response.data.data);
+          setTotalPages(response.data.totalPages);
+          setTotalItems(response.data.total);
+          setHasNextPage(response.data.hasNextPage);
+          setHasPreviousPage(response.data.hasPreviousPage);
+          
+          console.log(`✅ Loaded ${response.data.data.length} payments (page ${currentPage}/${response.data.totalPages})`);
+        }
       }
     } catch (error) {
       console.error('Error loading payments:', error);
@@ -156,59 +146,9 @@ const PaymentsScreen: React.FC = () => {
     }
   };
 
-  const filterPayments = () => {
-    let filtered = payments;
-    
-    // If contractId is provided, filter by contract first
-    if (contractId) {
-      filtered = filtered.filter(payment => payment.contract_id === contractId);
-    }
-    
-    // Apply status filter
-    if (activeFilter !== 'all') {
-      filtered = filtered.filter(payment => {
-        if (activeFilter === 'overdue') {
-          // Backend automatically sets status to 'overdue' for past due payments
-          // Also check for 'pending' payments with past due dates as fallback
-          return payment.status === 'overdue' || 
-                 (payment.status === 'pending' && new Date(payment.due_date || '') < new Date());
-        }
-        return payment.status === activeFilter;
-      });
-    }
-    
-    // Apply search filter (only if no contractId is provided)
-    if (searchQuery.trim() && !contractId) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(payment => {
-        // Search by client name
-        const clientName = payment.contract?.client 
-          ? `${payment.contract.client.first_name || ''} ${payment.contract.client.last_name || ''}`.toLowerCase().trim()
-          : '';
-        
-        // Search by contract number
-        const contractNumber = payment.contract?.contract_number?.toLowerCase() || '';
-        
-        // Search by payment ID (as a substitute for installment number)
-        const paymentId = payment.id?.toLowerCase() || '';
-        
-        return clientName.includes(query) || 
-               contractNumber.includes(query) || 
-               paymentId.includes(query);
-      });
-    }
-    
-    setFilteredPayments(filtered);
-    setCurrentPage(1); // Reset to first page after filtering
-  };
-
-  // Pagination functions
-  const getCurrentPageData = () => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredPayments.slice(startIndex, endIndex);
-  };
-
+  // Remove filterPayments function completely
+  
+  // Update pagination functions to use backend data
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -216,13 +156,13 @@ const PaymentsScreen: React.FC = () => {
   };
 
   const goToPreviousPage = () => {
-    if (currentPage > 1) {
+    if (hasPreviousPage) {
       setCurrentPage(currentPage - 1);
     }
   };
 
   const goToNextPage = () => {
-    if (currentPage < totalPages) {
+    if (hasNextPage) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -230,11 +170,10 @@ const PaymentsScreen: React.FC = () => {
   const renderPaginationControls = () => {
     if (totalPages <= 1) return null;
 
-    const maxVisiblePages = isTablet ? 7 : 5;
-    
+    const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
@@ -248,20 +187,20 @@ const PaymentsScreen: React.FC = () => {
       <View style={styles.paginationContainer}>
         <View style={styles.paginationInfo}>
           <Text style={styles.paginationText}>
-            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPayments.length)} de {filteredPayments.length} pagamentos
+            Mostrando {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalItems)} de {totalItems} pagamentos
           </Text>
         </View>
         
         <View style={styles.paginationControls}>
           <TouchableOpacity
-            style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+            style={[styles.paginationButton, !hasPreviousPage && styles.paginationButtonDisabled]}
             onPress={goToPreviousPage}
-            disabled={currentPage === 1}
+            disabled={!hasPreviousPage}
           >
             <Ionicons 
               name="chevron-back" 
               size={16} 
-              color={currentPage === 1 ? '#9CA3AF' : '#374151'} 
+              color={!hasPreviousPage ? '#9CA3AF' : '#374151'} 
             />
           </TouchableOpacity>
 
@@ -288,10 +227,12 @@ const PaymentsScreen: React.FC = () => {
               ]}
               onPress={() => goToPage(pageNumber)}
             >
-              <Text style={[
-                styles.paginationButtonText,
-                currentPage === pageNumber && styles.paginationButtonTextActive
-              ]}>
+              <Text
+                style={[
+                  styles.paginationButtonText,
+                  currentPage === pageNumber && styles.paginationButtonTextActive
+                ]}
+              >
                 {pageNumber}
               </Text>
             </TouchableOpacity>
@@ -312,14 +253,14 @@ const PaymentsScreen: React.FC = () => {
           )}
 
           <TouchableOpacity
-            style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+            style={[styles.paginationButton, !hasNextPage && styles.paginationButtonDisabled]}
             onPress={goToNextPage}
-            disabled={currentPage === totalPages}
+            disabled={!hasNextPage}
           >
             <Ionicons 
               name="chevron-forward" 
               size={16} 
-              color={currentPage === totalPages ? '#9CA3AF' : '#374151'} 
+              color={!hasNextPage ? '#9CA3AF' : '#374151'} 
             />
           </TouchableOpacity>
         </View>
@@ -355,23 +296,9 @@ const PaymentsScreen: React.FC = () => {
   const handleSort = (column: string, direction: 'asc' | 'desc') => {
     setSortColumn(column);
     setSortDirection(direction);
-    
-    const sortedPayments = [...filteredPayments].sort((a, b) => {
-      let aValue = a[column as keyof Payment] as any;
-      let bValue = b[column as keyof Payment] as any;
-      
-      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-      
-      if (direction === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-    
-    setFilteredPayments(sortedPayments);
-    setCurrentPage(1); // Reset to first page after sorting
+    // Note: Sorting will be handled by backend in future implementation
+    // For now, we'll reload data to reset any client-side sorting
+    loadPayments();
   };
 
   const handleCreatePayment = () => {
@@ -613,7 +540,7 @@ const PaymentsScreen: React.FC = () => {
           </View>
 
           <DataTable
-            data={getCurrentPageData()}
+            data={payments}
             columns={columns}
             loading={isLoading}
             onSort={handleSort}
