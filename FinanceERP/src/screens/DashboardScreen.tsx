@@ -8,7 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { SafeLineChart, SafeBarChart } from '../components/charts/ChartWrapper';
+import { SafeLineChart } from '../components/charts/ChartWrapper';
 import { DashboardStats } from '../types';
 import ApiService from '../services/api';
 import Card from '../components/common/Card';
@@ -102,20 +102,7 @@ const DashboardScreen: React.FC = () => {
     ],
   };
 
-  const paymentsData = {
-    labels: ['Pagos', 'Pendentes', 'Atrasados'],
-    datasets: [
-      {
-        data: stats?.paymentsByStatus && stats.paymentsByStatus.length > 0 
-          ? [
-              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'paid')?.count || 0),
-              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'pending')?.count || 0),
-              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'overdue')?.count || 0)
-            ]
-          : [1771, 67, 12],
-      },
-    ],
-  };
+
 
   if (isLoading && !stats) {
     return (
@@ -216,27 +203,7 @@ const DashboardScreen: React.FC = () => {
               />
             </View>
 
-             {/* Payments Chart */}
-             <View style={styles.chartCard}>
-               <Text style={styles.chartTitle}>Status dos Pagamentos</Text>
-               <SafeBarChart
-                 data={paymentsData}
-                 width={chartWidth}
-                 height={220}
-                 yAxisLabel=""
-                 yAxisSuffix=""
-                 chartConfig={{
-                   ...chartConfig,
-                   color: (opacity = 1) => `rgba(40, 167, 69, ${opacity})`,
-                   decimalPlaces: 0,
-                 }}
-                 style={styles.chart}
-                 withInnerLines={false}
-                 fromZero={true}
-                 showBarTops={false}
-                 showValuesOnTopOfBars={false}
-               />
-             </View>
+
 
 
 
