@@ -52,13 +52,12 @@ export class DashboardService {
         .from('payments')
         .select('*', { count: 'exact', head: true });
 
-      // Obter receita total (pagamentos pagos)
-      const { data: paidPayments } = await supabase
-        .from('payments')
-        .select('amount')
-        .eq('status', 'paid');
+      // Obter receita total (soma dos valores de todos os contratos)
+      const { data: contracts } = await supabase
+        .from('contracts')
+        .select('value');
 
-      const totalRevenue = paidPayments?.reduce((sum: number, payment: any) => sum + payment.amount, 0) || 0;
+      const totalRevenue = contracts?.reduce((sum: number, contract: any) => sum + contract.value, 0) || 0;
 
       // Obter pagamentos pendentes
       const { count: pendingPayments } = await supabase
