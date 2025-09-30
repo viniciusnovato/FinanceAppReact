@@ -14,6 +14,8 @@ import ApiService from '../services/api';
 import Button from '../components/common/Button';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
+import ClientForm from '../components/forms/ClientForm';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -25,6 +27,15 @@ const ClientsScreen: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Form states
+  const [showClientForm, setShowClientForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Confirm dialog states
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
@@ -61,19 +72,74 @@ const ClientsScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este cliente?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => deleteClient(clientId),
-        },
-      ]
-    );
+  const handleCreateClient = () => {
+    setEditingClient(null);
+    setShowClientForm(true);
+  };
+
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client);
+    setShowClientForm(true);
+  };
+
+  const handleSubmitClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      setIsSubmitting(true);
+      
+      if (editingClient) {
+        // Update existing client
+        const response = await ApiService.updateClient(editingClient.id, clientData);
+        if (response.success && response.data) {
+          setClients(clients.map(c => c.id === editingClient.id ? response.data : c));
+          Alert.alert('Sucesso', 'Cliente atualizado com sucesso');
+        }
+      } else {
+        // Create new client
+        const response = await ApiService.createClient(clientData);
+        if (response.success && response.data) {
+          setClients([...clients, response.data]);
+          Alert.alert('Sucesso', 'Cliente criado com sucesso');
+        }
+      }
+      
+      setShowClientForm(false);
+      setEditingClient(null);
+    } catch (error) {
+      console.error('Error submitting client:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o cliente');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseClientForm = () => {
+    setShowClientForm(false);
+    setEditingClient(null);
+  };
+
+  const handleDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    
+    try {
+      setIsSubmitting(true);
+      const response = await ApiService.deleteClient(clientToDelete.id);
+      if (response.success) {
+        setClients(clients.filter(c => c.id !== clientToDelete.id));
+        Alert.alert('Sucesso', 'Cliente excluído com sucesso');
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      Alert.alert('Erro', 'Não foi possível excluir o cliente');
+    } finally {
+      setIsSubmitting(false);
+      setShowConfirmDialog(false);
+      setClientToDelete(null);
+    }
   };
 
   const deleteClient = async (clientId: string) => {
@@ -116,8 +182,8 @@ const ClientsScreen: React.FC = () => {
       'Ações do Cliente',
       `${client.first_name} ${client.last_name}`,
       [
-        { text: 'Editar', onPress: () => Alert.alert('Info', 'Funcionalidade em desenvolvimento') },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteClient(client.id) },
+        { text: 'Editar', onPress: () => handleEditClient(client) },
+        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteClient(client) },
         { text: 'Cancelar', style: 'cancel' },
       ]
     );
@@ -301,6 +367,28 @@ const ClientsScreen: React.FC = () => {
       width: isTablet ? 120 : 90,
       render: (client: Client, date: string) => new Date(date).toLocaleDateString('pt-BR'),
     },
+    {
+      key: 'actions',
+      title: 'Ações',
+      sortable: false,
+      width: isTablet ? 120 : 100,
+      render: (client: Client) => (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
+            onPress={() => handleEditClient(client)}
+          >
+            <Ionicons name="pencil" size={16} color="#007BFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => handleDeleteClient(client)}
+          >
+            <Ionicons name="trash" size={16} color="#DC3545" />
+          </TouchableOpacity>
+        </View>
+      ),
+    },
   ];
 
   return (
@@ -311,7 +399,7 @@ const ClientsScreen: React.FC = () => {
             <Text style={styles.title}>Clientes</Text>
             <Button
               title="Novo Cliente"
-              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              onPress={handleCreateClient}
               variant="primary"
             />
           </View>
@@ -330,6 +418,29 @@ const ClientsScreen: React.FC = () => {
           {renderPaginationControls()}
         </View>
       </ScrollView>
+
+      <ClientForm
+        visible={showClientForm}
+        onClose={handleCloseClientForm}
+        onSubmit={handleSubmitClient}
+        client={editingClient}
+        isLoading={isSubmitting}
+      />
+
+      <ConfirmDialog
+        visible={showConfirmDialog}
+        title="Excluir Cliente"
+        message={`Tem certeza que deseja excluir o cliente "${clientToDelete?.first_name} ${clientToDelete?.last_name}"? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteClient}
+        onCancel={() => {
+          setShowConfirmDialog(false);
+          setClientToDelete(null);
+        }}
+        isDestructive
+        isLoading={isSubmitting}
+      />
     </MainLayout>
   );
 };
@@ -430,6 +541,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     paddingHorizontal: 4,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  editButton: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
 });
 

@@ -12,9 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Contract } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
+import ContractForm from '../components/forms/ContractForm';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -22,15 +25,26 @@ const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
 const ContractsScreen: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Contract form states
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Confirm dialog states
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
-    return Math.ceil(contracts.length / ITEMS_PER_PAGE);
-  }, [contracts.length]);
+    return Math.ceil(filteredContracts.length / ITEMS_PER_PAGE);
+  }, [filteredContracts.length]);
 
   // Reset to first page if current page exceeds total pages
   useEffect(() => {
@@ -42,6 +56,28 @@ const ContractsScreen: React.FC = () => {
   useEffect(() => {
     loadContracts();
   }, []);
+
+  // Filter contracts based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredContracts(contracts);
+    } else {
+      const query = searchQuery.toLowerCase().trim();
+      const filtered = contracts.filter(contract => {
+        // Search by contract number
+        const contractNumber = contract.contract_number?.toLowerCase() || '';
+        
+        // Search by client name
+        const clientName = contract.client 
+          ? `${contract.client.first_name || ''} ${contract.client.last_name || ''}`.toLowerCase().trim()
+          : '';
+        
+        return contractNumber.includes(query) || clientName.includes(query);
+      });
+      setFilteredContracts(filtered);
+    }
+    setCurrentPage(1); // Reset to first page when filtering
+  }, [searchQuery, contracts]);
 
   const loadContracts = async () => {
     try {
@@ -62,31 +98,26 @@ const ContractsScreen: React.FC = () => {
     }
   };
 
-  const handleDeleteContract = (contractId: string) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este contrato?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => deleteContract(contractId),
-        },
-      ]
-    );
+  const handleDeleteContract = (contract: Contract) => {
+    setContractToDelete(contract);
+    setShowConfirmDialog(true);
   };
 
-  const deleteContract = async (contractId: string) => {
+  const confirmDeleteContract = async () => {
+    if (!contractToDelete) return;
+    
     try {
-      const response = await ApiService.deleteContract(contractId);
+      const response = await ApiService.deleteContract(contractToDelete.id);
       if (response.success) {
-        setContracts(contracts.filter(contract => contract.id !== contractId));
+        setContracts(contracts.filter(c => c.id !== contractToDelete.id));
         Alert.alert('Sucesso', 'Contrato excluído com sucesso');
       }
     } catch (error) {
       console.error('Error deleting contract:', error);
       Alert.alert('Erro', 'Não foi possível excluir o contrato');
+    } finally {
+      setShowConfirmDialog(false);
+      setContractToDelete(null);
     }
   };
 
@@ -112,13 +143,57 @@ const ContractsScreen: React.FC = () => {
     setCurrentPage(1); // Reset to first page after sorting
   };
 
+  const handleCreateContract = () => {
+    setEditingContract(null);
+    setShowContractForm(true);
+  };
+
+  const handleEditContract = (contract: Contract) => {
+    setEditingContract(contract);
+    setShowContractForm(true);
+  };
+
+  const handleSubmitContract = async (contractData: Omit<Contract, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      setIsSubmitting(true);
+      
+      if (editingContract) {
+        // Update existing contract
+        const response = await ApiService.updateContract(editingContract.id, contractData);
+        if (response.success && response.data) {
+          setContracts(contracts.map(c => 
+            c.id === editingContract.id ? response.data! : c
+          ));
+          Alert.alert('Sucesso', 'Contrato atualizado com sucesso');
+        }
+      } else {
+        // Create new contract
+        const response = await ApiService.createContract(contractData);
+        if (response.success && response.data) {
+          setContracts([response.data, ...contracts]);
+          Alert.alert('Sucesso', 'Contrato criado com sucesso');
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting contract:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o contrato');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseContractForm = () => {
+    setShowContractForm(false);
+    setEditingContract(null);
+  };
+
   const handleRowPress = (contract: Contract) => {
     Alert.alert(
       'Ações do Contrato',
       `${contract.contract_number} - ${contract.description}`,
       [
-        { text: 'Editar', onPress: () => Alert.alert('Info', 'Funcionalidade em desenvolvimento') },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteContract(contract.id) },
+        { text: 'Editar', onPress: () => handleEditContract(contract) },
+        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteContract(contract) },
         { text: 'Cancelar', style: 'cancel' },
       ]
     );
@@ -128,7 +203,7 @@ const ContractsScreen: React.FC = () => {
   const getCurrentPageData = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return contracts.slice(startIndex, endIndex);
+    return filteredContracts.slice(startIndex, endIndex);
   };
 
   const goToPage = (page: number) => {
@@ -170,7 +245,7 @@ const ContractsScreen: React.FC = () => {
       <View style={styles.paginationContainer}>
         <View style={styles.paginationInfo}>
           <Text style={styles.paginationText}>
-            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, contracts.length)} de {contracts.length} contratos
+            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredContracts.length)} de {filteredContracts.length} contratos
           </Text>
         </View>
         
@@ -284,6 +359,13 @@ const ContractsScreen: React.FC = () => {
       render: (contract: Contract, value: number) => formatCurrency(value as number),
     },
     {
+      key: 'number_of_payments',
+      title: 'Nº Parcelas',
+      sortable: true,
+      width: isTablet ? 100 : 80,
+      render: (contract: Contract, numberOfPayments: number) => numberOfPayments ? numberOfPayments.toString() : 'N/A',
+    },
+    {
       key: 'status',
       title: 'Status',
       sortable: true,
@@ -318,6 +400,28 @@ const ContractsScreen: React.FC = () => {
       width: isTablet ? 100 : 80,
       render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-BR'),
     },
+    {
+      key: 'actions',
+      title: 'Ações',
+      sortable: false,
+      width: isTablet ? 120 : 100,
+      render: (contract: Contract) => (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
+            onPress={() => handleEditContract(contract)}
+          >
+            <Ionicons name="pencil" size={16} color="#007BFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => handleDeleteContract(contract)}
+          >
+            <Ionicons name="trash" size={16} color="#DC3545" />
+          </TouchableOpacity>
+        </View>
+      ),
+    },
   ];
 
   return (
@@ -328,8 +432,17 @@ const ContractsScreen: React.FC = () => {
             <Text style={styles.title}>Contratos</Text>
             <Button
               title="Novo Contrato"
-              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              onPress={handleCreateContract}
               variant="primary"
+            />
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Input
+              placeholder="Buscar por nome do cliente ou número do contrato..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              containerStyle={styles.searchInput}
             />
           </View>
 
@@ -346,6 +459,25 @@ const ContractsScreen: React.FC = () => {
           {renderPaginationControls()}
         </View>
       </ScrollView>
+      
+      <ContractForm
+        visible={showContractForm}
+        onClose={handleCloseContractForm}
+        onSubmit={handleSubmitContract}
+        contract={editingContract}
+        isLoading={isSubmitting}
+      />
+      
+      <ConfirmDialog
+        visible={showConfirmDialog}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o contrato "${contractToDelete?.contract_number || contractToDelete?.description}"?`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteContract}
+        onCancel={() => setShowConfirmDialog(false)}
+        isDestructive={true}
+      />
     </MainLayout>
   );
 };
@@ -374,6 +506,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
+  },
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
+    marginBottom: 0,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -449,6 +587,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     paddingHorizontal: 4,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  editButton: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
 });
 

@@ -2,6 +2,7 @@ import { supabase } from '../config/database';
 
 export interface DashboardStats {
   totalClients: number;
+  activeClients: number;
   totalContracts: number;
   activeContracts: number;
   totalPayments: number;
@@ -28,6 +29,12 @@ export class DashboardService {
       const { count: totalClients } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true });
+
+      // Obter clientes ativos
+      const { count: activeClients } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'ativo');
 
       // Obter total de contratos
       const { count: totalContracts } = await supabase
@@ -73,6 +80,7 @@ export class DashboardService {
 
       return {
         totalClients: totalClients || 0,
+        activeClients: activeClients || 0,
         totalContracts: totalContracts || 0,
         activeContracts: activeContracts || 0,
         totalPayments: totalPayments || 0,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,22 @@ import {
   Alert,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Payment } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
+import PaymentForm from '../components/forms/PaymentForm';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth > 768;
+const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
 type PaymentFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'cancelled';
 
@@ -27,10 +36,33 @@ const filters = [
 const PaymentsScreen: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<PaymentFilter>('all');
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Payment form state
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Confirm dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+
+  // Calculate total pages using useMemo to avoid unnecessary recalculations
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
+  }, [filteredPayments.length]);
+
+  // Reset to first page if current page exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   useEffect(() => {
     loadPayments();
@@ -38,7 +70,7 @@ const PaymentsScreen: React.FC = () => {
 
   useEffect(() => {
     filterPayments();
-  }, [payments, activeFilter]);
+  }, [payments, activeFilter, searchQuery]);
 
   const loadPayments = async () => {
     try {
@@ -60,43 +92,191 @@ const PaymentsScreen: React.FC = () => {
   const filterPayments = () => {
     let filtered = payments;
     
+    // Apply status filter
     if (activeFilter !== 'all') {
-      filtered = payments.filter(payment => {
+      filtered = filtered.filter(payment => {
         if (activeFilter === 'overdue') {
-          return payment.status === 'pending' && new Date(payment.due_date || '') < new Date();
+          // Backend automatically sets status to 'overdue' for past due payments
+          // Also check for 'pending' payments with past due dates as fallback
+          return payment.status === 'overdue' || 
+                 (payment.status === 'pending' && new Date(payment.due_date || '') < new Date());
         }
         return payment.status === activeFilter;
       });
     }
     
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(payment => {
+        // Search by client name
+        const clientName = payment.contract?.client 
+          ? `${payment.contract.client.first_name || ''} ${payment.contract.client.last_name || ''}`.toLowerCase().trim()
+          : '';
+        
+        // Search by contract number
+        const contractNumber = payment.contract?.contract_number?.toLowerCase() || '';
+        
+        // Search by payment ID (as a substitute for installment number)
+        const paymentId = payment.id?.toLowerCase() || '';
+        
+        return clientName.includes(query) || 
+               contractNumber.includes(query) || 
+               paymentId.includes(query);
+      });
+    }
+    
     setFilteredPayments(filtered);
+    setCurrentPage(1); // Reset to first page after filtering
   };
 
-  const handleDeletePayment = (paymentId: string) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este pagamento?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => deletePayment(paymentId),
-        },
-      ]
+  // Pagination functions
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredPayments.slice(startIndex, endIndex);
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    const maxVisiblePages = isTablet ? 7 : 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <View style={styles.paginationContainer}>
+        <View style={styles.paginationInfo}>
+          <Text style={styles.paginationText}>
+            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPayments.length)} de {filteredPayments.length} pagamentos
+          </Text>
+        </View>
+        
+        <View style={styles.paginationControls}>
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+            onPress={goToPreviousPage}
+            disabled={currentPage === 1}
+          >
+            <Ionicons 
+              name="chevron-back" 
+              size={16} 
+              color={currentPage === 1 ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+
+          {startPage > 1 && (
+            <React.Fragment key="start-pagination">
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(1)}
+              >
+                <Text style={styles.paginationButtonText}>1</Text>
+              </TouchableOpacity>
+              {startPage > 2 && (
+                <Text key="start-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+            </React.Fragment>
+          )}
+
+          {pageNumbers.map((pageNumber) => (
+            <TouchableOpacity
+              key={pageNumber}
+              style={[
+                styles.paginationButton,
+                currentPage === pageNumber && styles.paginationButtonActive
+              ]}
+              onPress={() => goToPage(pageNumber)}
+            >
+              <Text style={[
+                styles.paginationButtonText,
+                currentPage === pageNumber && styles.paginationButtonTextActive
+              ]}>
+                {pageNumber}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {endPage < totalPages && (
+            <React.Fragment key="end-pagination">
+              {endPage < totalPages - 1 && (
+                <Text key="end-ellipsis" style={styles.paginationEllipsis}>...</Text>
+              )}
+              <TouchableOpacity
+                style={styles.paginationButton}
+                onPress={() => goToPage(totalPages)}
+              >
+                <Text style={styles.paginationButtonText}>{totalPages}</Text>
+              </TouchableOpacity>
+            </React.Fragment>
+          )}
+
+          <TouchableOpacity
+            style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+            onPress={goToNextPage}
+            disabled={currentPage === totalPages}
+          >
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color={currentPage === totalPages ? '#9CA3AF' : '#374151'} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
-  const deletePayment = async (paymentId: string) => {
+  const handleDeletePayment = (payment: Payment) => {
+    setPaymentToDelete(payment);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    
     try {
-      const response = await ApiService.deletePayment(paymentId);
+      const response = await ApiService.deletePayment(paymentToDelete.id);
       if (response.success) {
-        setPayments(payments.filter(payment => payment.id !== paymentId));
+        setPayments(payments.filter(payment => payment.id !== paymentToDelete.id));
         Alert.alert('Sucesso', 'Pagamento excluído com sucesso');
+      } else {
+        Alert.alert('Erro', 'Não foi possível excluir o pagamento');
       }
     } catch (error) {
       console.error('Error deleting payment:', error);
       Alert.alert('Erro', 'Não foi possível excluir o pagamento');
+    } finally {
+      setShowConfirmDialog(false);
+      setPaymentToDelete(null);
     }
   };
 
@@ -119,6 +299,56 @@ const PaymentsScreen: React.FC = () => {
     });
     
     setFilteredPayments(sortedPayments);
+    setCurrentPage(1); // Reset to first page after sorting
+  };
+
+  const handleCreatePayment = () => {
+    setEditingPayment(null);
+    setShowPaymentForm(true);
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    setEditingPayment(payment);
+    setShowPaymentForm(true);
+  };
+
+  const handleSubmitPayment = async (paymentData: Omit<Payment, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      setIsSubmitting(true);
+      
+      let response;
+      if (editingPayment) {
+        // Update existing payment
+        response = await ApiService.updatePayment(editingPayment.id, paymentData);
+        if (response.success && response.data) {
+          setPayments(payments.map(payment => 
+            payment.id === editingPayment.id ? response.data! : payment
+          ));
+          Alert.alert('Sucesso', 'Pagamento atualizado com sucesso');
+        }
+      } else {
+        // Create new payment
+        response = await ApiService.createPayment(paymentData);
+        if (response.success && response.data) {
+          setPayments([...payments, response.data]);
+          Alert.alert('Sucesso', 'Pagamento criado com sucesso');
+        }
+      }
+      
+      if (!response.success) {
+        Alert.alert('Erro', 'Falha ao salvar pagamento');
+      }
+    } catch (error) {
+      console.error('Error submitting payment:', error);
+      Alert.alert('Erro', 'Falha ao salvar pagamento');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClosePaymentForm = () => {
+    setShowPaymentForm(false);
+    setEditingPayment(null);
   };
 
   const handleRowPress = (payment: Payment) => {
@@ -126,15 +356,15 @@ const PaymentsScreen: React.FC = () => {
       'Ações do Pagamento',
       `${payment.contract?.contract_number} - ${formatCurrency(payment.amount || 0)}`,
       [
-        { text: 'Marcar como Pago', onPress: () => markAsPaid(payment.id) },
-        { text: 'Editar', onPress: () => Alert.alert('Info', 'Funcionalidade em desenvolvimento') },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeletePayment(payment.id) },
+        { text: 'Marcar como Pago', onPress: () => markAsPago(payment.id) },
+        { text: 'Editar', onPress: () => handleEditPayment(payment) },
+        { text: 'Excluir', style: 'destructive', onPress: () => handleDeletePayment(payment) },
         { text: 'Cancelar', style: 'cancel' },
       ]
     );
   };
 
-  const markAsPaid = async (paymentId: string) => {
+  const markAsPago = async (paymentId: string) => {
     try {
       // Simulate API call
       const updatedPayments = payments.map(payment => 
@@ -231,9 +461,31 @@ const PaymentsScreen: React.FC = () => {
                method === 'credit_card' ? 'Cartão' : method || 'N/A';
       },
     },
+    {
+      key: 'actions',
+      title: 'Ações',
+      sortable: false,
+      width: 120,
+      render: (payment: Payment) => (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
+            onPress={() => handleEditPayment(payment)}
+          >
+            <Ionicons name="pencil" size={16} color="#007BFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => handleDeletePayment(payment)}
+          >
+            <Ionicons name="trash" size={16} color="#DC3545" />
+          </TouchableOpacity>
+        </View>
+      ),
+    },
   ];
 
-  const filters: PaymentFilter[] = ['all', 'pending', 'paid', 'overdue', 'cancelled'];
+
 
   return (
     <MainLayout activeRoute="Payments">
@@ -243,8 +495,17 @@ const PaymentsScreen: React.FC = () => {
             <Text style={styles.title}>Pagamentos</Text>
             <Button
               title="Novo Pagamento"
-              onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}
+              onPress={handleCreatePayment}
               variant="primary"
+            />
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Input
+              placeholder="Buscar por nome do cliente, número do contrato ou ID do pagamento..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              containerStyle={styles.searchInput}
             />
           </View>
 
@@ -277,7 +538,7 @@ const PaymentsScreen: React.FC = () => {
           </View>
 
           <DataTable
-            data={filteredPayments}
+            data={getCurrentPageData()}
             columns={columns}
             loading={isLoading}
             onSort={handleSort}
@@ -286,8 +547,29 @@ const PaymentsScreen: React.FC = () => {
             sortDirection={sortDirection}
             keyExtractor={(item) => item.id}
           />
+
+          {renderPaginationControls()}
         </View>
       </ScrollView>
+      
+      <PaymentForm
+        visible={showPaymentForm}
+        onClose={handleClosePaymentForm}
+        onSubmit={handleSubmitPayment}
+        payment={editingPayment}
+        isLoading={isSubmitting}
+      />
+      
+      <ConfirmDialog
+        visible={showConfirmDialog}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o pagamento de ${paymentToDelete?.contract?.contract_number}?`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        onConfirm={confirmDeletePayment}
+        onCancel={() => setShowConfirmDialog(false)}
+        isDestructive={true}
+      />
     </MainLayout>
   );
 };
@@ -316,6 +598,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
+  },
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
+    marginBottom: 0,
   },
   filtersContainer: {
     marginBottom: 20,
@@ -372,6 +660,80 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  editButton: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  paginationContainer: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  paginationInfo: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paginationButton: {
+    minWidth: 36,
+    height: 36,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 6,
+  },
+  paginationButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  paginationButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  paginationEllipsis: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    paddingHorizontal: 4,
   },
 });
 

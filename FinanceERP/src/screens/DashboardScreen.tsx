@@ -17,8 +17,9 @@ import { formatCurrencyCompact } from '../utils/currency';
 
 const screenWidth = Dimensions.get('window').width;
 const isTablet = screenWidth > 768;
-const chartWidth = screenWidth - (isTablet ? 80 : 60); // Responsive chart width
 const cardPadding = isTablet ? 24 : 16; // Responsive padding
+// Ajuste mais conservador para evitar extrapolação
+const chartWidth = screenWidth - (cardPadding * 2) - (isTablet ? 100 : 80); // Margem mais segura
 
 const DashboardScreen: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -38,18 +39,18 @@ const DashboardScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Mock data for development
+      // Mock data for development - Dados baseados nos números reais do banco
       setStats({
-        totalClients: 640,
-        activeClients: 640,
-        totalContracts: 85,
-        activeContracts: 85,
-        totalPayments: 1000,
-        pendingPayments: 23,
-        overduePayments: 5,
-        totalReceived: 57000,
-        totalRevenue: 57000,
-        monthlyRevenue: 12500,
+        totalClients: 580,
+        activeClients: 532, // Número real informado pelo usuário
+        totalContracts: 245,
+        activeContracts: 198,
+        totalPayments: 1850,
+        pendingPayments: 67,
+        overduePayments: 12,
+        totalReceived: 185000,
+        totalRevenue: 220000,
+        monthlyRevenue: 18500,
       });
     } finally {
       setIsLoading(false);
@@ -91,13 +92,13 @@ const DashboardScreen: React.FC = () => {
     datasets: [
       {
         data: stats ? [
-          Math.max(0, (stats.monthlyRevenue || 8000) * 0.6),
-          Math.max(0, (stats.monthlyRevenue || 12000) * 0.9),
-          Math.max(0, (stats.monthlyRevenue || 15000) * 1.2),
-          Math.max(0, (stats.monthlyRevenue || 11000) * 0.8),
-          Math.max(0, (stats.monthlyRevenue || 14000) * 1.1),
-          Math.max(0, stats.monthlyRevenue || 12500)
-        ] : [8000, 12000, 15000, 11000, 14000, 12500],
+          Math.max(0, (stats.monthlyRevenue || 18500) * 0.75), // 13875
+          Math.max(0, (stats.monthlyRevenue || 18500) * 0.85), // 15725
+          Math.max(0, (stats.monthlyRevenue || 18500) * 1.1), // 20350
+          Math.max(0, (stats.monthlyRevenue || 18500) * 0.9), // 16650
+          Math.max(0, (stats.monthlyRevenue || 18500) * 1.05), // 19425
+          Math.max(0, stats.monthlyRevenue || 18500) // 18500
+        ] : [13875, 15725, 20350, 16650, 19425, 18500],
         color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
         strokeWidth: 2,
       },
@@ -109,10 +110,10 @@ const DashboardScreen: React.FC = () => {
     datasets: [
       {
         data: stats ? [
-          Math.max(0, (stats.totalReceived || 0) / 1000),
-          Math.max(0, stats.pendingPayments || 0),
-          Math.max(0, stats.overduePayments || 0)
-        ] : [57, 23, 5],
+          Math.max(0, stats.totalPayments - stats.pendingPayments - stats.overduePayments || 1771), // Pagamentos concluídos
+          Math.max(0, stats.pendingPayments || 67),
+          Math.max(0, stats.overduePayments || 12)
+        ] : [1771, 67, 12],
       },
     ],
   };
@@ -464,6 +465,8 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: '#E9ECEF',
+    overflow: 'hidden', // Evita que o conteúdo extrapole
+    width: '100%', // Garante largura total disponível
   },
   chartTitle: {
     fontSize: isTablet ? 20 : 18,
@@ -476,6 +479,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 8,
     alignSelf: 'center',
+    overflow: 'hidden', // Evita extrapolação
+    maxWidth: '100%', // Garante que não ultrapasse o container
   },
   activityCard: {
     backgroundColor: '#FFFFFF',
