@@ -52,7 +52,10 @@ export interface Payment {
   due_date: Date;
   paid_date?: Date;
   status: 'pending' | 'paid' | 'overdue';
+  payment_method?: string;
+  payment_type?: 'normalPayment' | 'downPayment';
   notes?: string;
+  external_id?: string;
   created_at: Date;
   updated_at: Date;
 }

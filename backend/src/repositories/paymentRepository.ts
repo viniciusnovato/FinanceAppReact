@@ -307,4 +307,22 @@ export class PaymentRepository {
       throw new Error('Failed to mark payment as paid');
     }
   }
+
+  /**
+   * Remove todos os pagamentos de um contrato específico
+   */
+  async deleteByContractId(contractId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .delete()
+        .eq('contract_id', contractId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting payments by contract ID:', error);
+      throw new Error('Failed to delete payments by contract ID');
+    }
+  }
 }

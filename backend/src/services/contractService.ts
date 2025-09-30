@@ -1,15 +1,18 @@
 import { ContractRepository } from '../repositories/contractRepository';
 import { ClientRepository } from '../repositories/clientRepository';
-import { Contract } from '../models';
+import { PaymentRepository } from '../repositories/paymentRepository';
+import { Contract, Payment } from '../models';
 import { createError } from '../middlewares/errorHandler';
 
 export class ContractService {
   private contractRepository: ContractRepository;
   private clientRepository: ClientRepository;
+  private paymentRepository: PaymentRepository;
 
   constructor() {
     this.contractRepository = new ContractRepository();
     this.clientRepository = new ClientRepository();
+    this.paymentRepository = new PaymentRepository();
   }
 
   async getAllContracts(): Promise<Contract[]> {
@@ -108,7 +111,15 @@ export class ContractService {
       }
     }
 
-    return this.contractRepository.create(processedData);
+    // Create contract first
+    const createdContract = await this.contractRepository.create(processedData);
+
+    // Generate automatic payments if required fields are present
+    if (createdContract.start_date && createdContract.number_of_payments && createdContract.number_of_payments > 0) {
+      await this.generateAutomaticPayments(createdContract);
+    }
+
+    return createdContract;
   }
 
   async updateContract(id: string, contractData: Partial<Omit<Contract, 'id' | 'created_at' | 'updated_at'>>): Promise<Contract> {
@@ -195,5 +206,120 @@ export class ContractService {
 
   async getContractsByStatus(status: string): Promise<Contract[]> {
     return this.contractRepository.findByStatus(status);
+  }
+
+  /**
+   * Gera pagamentos automáticos para um contrato
+   * Baseado nas regras de negócio definidas no newFunctionality.md
+   */
+  private async generateAutomaticPayments(contract: Contract): Promise<void> {
+    try {
+      // Validações antes de gerar pagamentos
+      if (!contract.start_date || !contract.number_of_payments || contract.number_of_payments <= 0) {
+        console.log('Skipping automatic payment generation: missing required fields');
+        return;
+      }
+
+      // Verificar se o contrato ainda existe
+      const existingContract = await this.contractRepository.findById(contract.id);
+      if (!existingContract) {
+        throw createError('Contract not found during payment generation', 404);
+      }
+
+      const payments: Omit<Payment, 'id' | 'created_at' | 'updated_at'>[] = [];
+      const startDate = new Date(contract.start_date);
+      const totalValue = Number(contract.value);
+      const downPaymentValue = Number(contract.down_payment) || 0;
+      const numberOfPayments = Number(contract.number_of_payments);
+
+      // Calcular valor das parcelas (valor total - entrada) / número de parcelas
+      const remainingValue = totalValue - downPaymentValue;
+      const installmentValue = remainingValue / numberOfPayments;
+
+      // Criar entrada se houver
+      if (downPaymentValue > 0) {
+        payments.push({
+          contract_id: contract.id,
+          amount: downPaymentValue,
+          due_date: startDate,
+          status: 'pending',
+          payment_method: undefined,
+          payment_type: 'downPayment',
+          notes: 'Entrada do contrato',
+          external_id: undefined,
+          paid_date: undefined,
+        });
+      }
+
+      // Criar parcelas mensais
+      for (let i = 1; i <= numberOfPayments; i++) {
+        const dueDate = new Date(startDate);
+        dueDate.setMonth(startDate.getMonth() + i);
+
+        // Verificar se a data de vencimento não é anterior à data atual
+        const today = new Date();
+        const status = dueDate < today ? 'overdue' : 'pending';
+
+        payments.push({
+          contract_id: contract.id,
+          amount: installmentValue,
+          due_date: dueDate,
+          status: status,
+          payment_method: undefined,
+          payment_type: 'normalPayment',
+          notes: `Parcela ${i} de ${numberOfPayments}`,
+          external_id: undefined,
+          paid_date: undefined,
+        });
+      }
+
+      // Criar todos os pagamentos
+      for (const paymentData of payments) {
+        try {
+          await this.paymentRepository.create(paymentData);
+        } catch (error) {
+          console.error(`Error creating payment for contract ${contract.id}:`, error);
+          // Em caso de erro, tentar limpar pagamentos já criados
+          await this.paymentRepository.deleteByContractId(contract.id);
+          throw createError('Failed to generate automatic payments', 500);
+        }
+      }
+
+      console.log(`Generated ${payments.length} automatic payments for contract ${contract.id}`);
+    } catch (error) {
+      console.error('Error generating automatic payments:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove todos os pagamentos de um contrato
+   */
+  async deleteContractPayments(contractId: string): Promise<void> {
+    try {
+      // Verificar se o contrato existe
+      const contract = await this.contractRepository.findById(contractId);
+      if (!contract) {
+        throw createError('Contract not found', 404);
+      }
+
+      // Verificar se existem pagamentos para este contrato
+      const existingPayments = await this.paymentRepository.findByContractId(contractId);
+      if (existingPayments.length === 0) {
+        console.log(`No payments found for contract ${contractId}`);
+        return;
+      }
+
+      // Remover todos os pagamentos do contrato
+      const success = await this.paymentRepository.deleteByContractId(contractId);
+      if (!success) {
+        throw createError('Failed to delete contract payments', 500);
+      }
+
+      console.log(`Successfully deleted ${existingPayments.length} payments for contract ${contractId}`);
+    } catch (error) {
+      console.error('Error deleting contract payments:', error);
+      throw error;
+    }
   }
 }

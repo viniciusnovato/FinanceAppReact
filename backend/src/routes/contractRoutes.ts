@@ -15,6 +15,9 @@ router.post('/', contractController.createContract);
 router.put('/:id', contractController.updateContract);
 router.delete('/:id', contractController.deleteContract);
 
+// Bulk operations
+router.delete('/:id/payments', contractController.deleteContractPayments);
+
 // Additional routes for filtering
 router.get('/client/:clientId', contractController.getContractsByClientId);
 router.get('/status/:status', contractController.getContractsByStatus);

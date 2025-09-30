@@ -38,7 +38,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     status: 'pending',
     payment_method: '',
     notes: '',
-    payment_type: '',
+    payment_type: 'normalPayment',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -62,7 +62,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         status: payment.status || 'pending',
         payment_method: payment.payment_method || '',
         notes: payment.notes || '',
-        payment_type: payment.payment_type || '',
+        payment_type: payment.payment_type || 'normalPayment',
       });
       
       // Find and set selected contract
@@ -80,7 +80,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         status: 'pending',
         payment_method: '',
         notes: '',
-        payment_type: '',
+        payment_type: 'normalPayment',
       });
       setSelectedContract(null);
     }
@@ -202,6 +202,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     { value: 'cancelled', label: 'Cancelado' },
   ];
 
+  const paymentTypeOptions = [
+    { value: 'normalPayment', label: 'Pagamento Normal' },
+    { value: 'downPayment', label: 'Entrada' },
+  ];
+
   return (
     <Modal
       visible={visible}
@@ -306,13 +311,28 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 placeholder="Ex: Cartão, PIX, Boleto, etc."
               />
 
-              <Input
-                label="Tipo de Pagamento"
-                value={formData.payment_type}
-                onChangeText={(value) => updateField('payment_type', value)}
-                error={errors.payment_type}
-                placeholder="Ex: À vista, Parcelado, etc."
-              />
+              <View>
+                <Text style={styles.inputLabel}>Tipo de Pagamento</Text>
+                <View style={styles.statusContainer}>
+                  {paymentTypeOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.statusOption,
+                        formData.payment_type === option.value && styles.statusOptionSelected
+                      ]}
+                      onPress={() => updateField('payment_type', option.value)}
+                    >
+                      <Text style={[
+                        styles.statusOptionText,
+                        formData.payment_type === option.value && styles.statusOptionTextSelected
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
 
             <View style={styles.section}>
