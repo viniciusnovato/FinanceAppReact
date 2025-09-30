@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Client } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import ClientForm from '../components/forms/ClientForm';
@@ -23,6 +24,8 @@ const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
 const ClientsScreen: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -39,8 +42,8 @@ const ClientsScreen: React.FC = () => {
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
-    return Math.ceil(clients.length / ITEMS_PER_PAGE);
-  }, [clients.length]);
+    return Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+  }, [filteredClients.length]);
 
   // Reset to first page if current page exceeds total pages
   useEffect(() => {
@@ -52,6 +55,26 @@ const ClientsScreen: React.FC = () => {
   useEffect(() => {
     loadClients();
   }, []);
+
+  // Filter clients based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredClients(clients);
+    } else {
+      const filtered = clients.filter(client => {
+        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+        const email = client.email?.toLowerCase() || '';
+        const taxId = client.tax_id?.toLowerCase() || '';
+        const query = searchQuery.toLowerCase();
+        
+        return fullName.includes(query) || 
+               email.includes(query) || 
+               taxId.includes(query);
+      });
+      setFilteredClients(filtered);
+    }
+    setCurrentPage(1); // Reset to first page when search changes
+  }, [clients, searchQuery]);
 
   const loadClients = async () => {
     try {
@@ -193,7 +216,7 @@ const ClientsScreen: React.FC = () => {
   const getCurrentPageData = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return clients.slice(startIndex, endIndex);
+    return filteredClients.slice(startIndex, endIndex);
   };
 
   const goToPage = (page: number) => {
@@ -235,7 +258,7 @@ const ClientsScreen: React.FC = () => {
       <View style={styles.paginationContainer}>
         <View style={styles.paginationInfo}>
           <Text style={styles.paginationText}>
-            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, clients.length)} de {clients.length} clientes
+            Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} de {filteredClients.length} clientes
           </Text>
         </View>
         
@@ -404,6 +427,15 @@ const ClientsScreen: React.FC = () => {
             />
           </View>
 
+          <View style={styles.searchContainer}>
+            <Input
+              placeholder="Buscar por nome, email ou NIF..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              containerStyle={styles.searchInput}
+            />
+          </View>
+
           <DataTable
             data={getCurrentPageData()}
             columns={columns}
@@ -469,6 +501,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
+  },
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
+    marginBottom: 0,
   },
   statusBadge: {
     paddingHorizontal: 12,

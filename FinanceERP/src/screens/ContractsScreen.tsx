@@ -9,6 +9,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { Contract } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
@@ -18,12 +20,16 @@ import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
 import ContractForm from '../components/forms/ContractForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
 const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
+type ContractsScreenNavigationProp = StackNavigationProp<MainStackParamList, 'Contracts'>;
+
 const ContractsScreen: React.FC = () => {
+  const navigation = useNavigation<ContractsScreenNavigationProp>();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,15 +194,7 @@ const ContractsScreen: React.FC = () => {
   };
 
   const handleRowPress = (contract: Contract) => {
-    Alert.alert(
-      'Ações do Contrato',
-      `${contract.contract_number} - ${contract.description}`,
-      [
-        { text: 'Editar', onPress: () => handleEditContract(contract) },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteContract(contract) },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
+    navigation.navigate('Payments', { contractId: contract.id });
   };
 
   // Pagination functions

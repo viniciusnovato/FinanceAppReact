@@ -24,7 +24,7 @@ export type MainStackParamList = {
   Dashboard: undefined;
   Clients: undefined;
   Contracts: undefined;
-  Payments: undefined;
+  Payments: { contractId?: string } | undefined;
 };
 
 const RootStack = createStackNavigator<RootStackParamList>();

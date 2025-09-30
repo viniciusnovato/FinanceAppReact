@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { Payment } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
@@ -18,12 +19,14 @@ import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
 import PaymentForm from '../components/forms/PaymentForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
 const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
 type PaymentFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+type PaymentsScreenRouteProp = RouteProp<MainStackParamList, 'Payments'>;
 
 const filters = [
   { key: 'all' as PaymentFilter, label: 'Todos' },
@@ -34,6 +37,8 @@ const filters = [
 ];
 
 const PaymentsScreen: React.FC = () => {
+  const route = useRoute<PaymentsScreenRouteProp>();
+  const contractId = route.params?.contractId;
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,6 +47,7 @@ const PaymentsScreen: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [contractNumber, setContractNumber] = useState<string>('');
   
   // Payment form state
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -78,6 +84,16 @@ const PaymentsScreen: React.FC = () => {
       const response = await ApiService.getPayments();
       if (response.success && response.data) {
         setPayments(response.data);
+        
+        // If contractId is provided, find the contract number and set it in search
+        if (contractId && response.data.length > 0) {
+          const paymentWithContract = response.data.find(payment => payment.contract_id === contractId);
+          if (paymentWithContract && paymentWithContract.contract?.contract_number) {
+            const contractNum = paymentWithContract.contract.contract_number;
+            setContractNumber(contractNum);
+            setSearchQuery(contractNum);
+          }
+        }
       } else {
         Alert.alert('Erro', 'Não foi possível carregar os pagamentos');
       }
@@ -316,7 +332,7 @@ const PaymentsScreen: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      let response;
+      let response: any;
       if (editingPayment) {
         // Update existing payment
         response = await ApiService.updatePayment(editingPayment.id, paymentData);
@@ -492,7 +508,14 @@ const PaymentsScreen: React.FC = () => {
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>Pagamentos</Text>
+            <View>
+              <Text style={styles.title}>Pagamentos</Text>
+              {contractNumber && searchQuery === contractNumber && (
+                <Text style={styles.subtitle}>
+                  Filtrado por contrato: {contractNumber}
+                </Text>
+              )}
+            </View>
             <Button
               title="Novo Pagamento"
               onPress={handleCreatePayment}
@@ -598,6 +621,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
   },
   searchContainer: {
     marginBottom: 20,
