@@ -88,17 +88,14 @@ const DashboardScreen: React.FC = () => {
   };
 
   const revenueData = {
-    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+    labels: stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 
+      ? stats.monthlyRevenue.map(item => item.month)
+      : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
     datasets: [
       {
-        data: stats ? [
-          Math.max(0, (stats.monthlyRevenue || 18500) * 0.75), // 13875
-          Math.max(0, (stats.monthlyRevenue || 18500) * 0.85), // 15725
-          Math.max(0, (stats.monthlyRevenue || 18500) * 1.1), // 20350
-          Math.max(0, (stats.monthlyRevenue || 18500) * 0.9), // 16650
-          Math.max(0, (stats.monthlyRevenue || 18500) * 1.05), // 19425
-          Math.max(0, stats.monthlyRevenue || 18500) // 18500
-        ] : [13875, 15725, 20350, 16650, 19425, 18500],
+        data: stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 
+          ? stats.monthlyRevenue.map(item => Math.max(0, item.revenue))
+          : [13875, 15725, 20350, 16650, 19425, 18500],
         color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
         strokeWidth: 2,
       },
@@ -109,11 +106,13 @@ const DashboardScreen: React.FC = () => {
     labels: ['Pagos', 'Pendentes', 'Atrasados'],
     datasets: [
       {
-        data: stats ? [
-          Math.max(0, stats.totalPayments - stats.pendingPayments - stats.overduePayments || 1771), // Pagamentos concluídos
-          Math.max(0, stats.pendingPayments || 67),
-          Math.max(0, stats.overduePayments || 12)
-        ] : [1771, 67, 12],
+        data: stats?.paymentsByStatus && stats.paymentsByStatus.length > 0 
+          ? [
+              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'paid')?.count || 0),
+              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'pending')?.count || 0),
+              Math.max(0, stats.paymentsByStatus.find(item => item.status === 'overdue')?.count || 0)
+            ]
+          : [1771, 67, 12],
       },
     ],
   };
@@ -239,106 +238,9 @@ const DashboardScreen: React.FC = () => {
                />
              </View>
 
-            {/* Recent Activity */}
-            <View style={styles.activityCard}>
-              <Text style={styles.chartTitle}>Atividade Recente</Text>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Pagamento de R$ 2.500,00 recebido de João Silva
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.contractDot]} />
-                <Text style={styles.activityText}>
-                  Novo contrato assinado com Maria Santos
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot]} />
-                <Text style={styles.activityText}>
-                  Cliente Pedro Costa cadastrado no sistema
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Pagamento de R$ 1.800,00 recebido de Ana Lima
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.contractDot]} />
-                <Text style={styles.activityText}>
-                  Contrato renovado com Carlos Oliveira
-                </Text>
-              </View>
 
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Pagamento de R$ 3.200,00 recebido de Fernanda Souza
-                </Text>
-              </View>
 
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot]} />
-                <Text style={styles.activityText}>
-                  Cliente Roberto Alves cadastrado no sistema
-                </Text>
-              </View>
 
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.contractDot]} />
-                <Text style={styles.activityText}>
-                  Novo contrato assinado com Juliana Pereira
-                </Text>
-              </View>
-
-              <View style={[styles.activityItem, { borderBottomWidth: 0 }]}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Pagamento de R$ 4.100,00 recebido de Ricardo Mendes
-                </Text>
-              </View>
-            </View>
-
-            {/* Additional Stats Section */}
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Resumo Mensal</Text>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Total de receitas este mês: R$ 45.300,00
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot, styles.contractDot]} />
-                <Text style={styles.activityText}>
-                  Novos contratos assinados: 12
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <View style={[styles.activityDot]} />
-                <Text style={styles.activityText}>
-                  Novos clientes cadastrados: 8
-                </Text>
-              </View>
-              
-              <View style={[styles.activityItem, { borderBottomWidth: 0 }]}>
-                <View style={[styles.activityDot, styles.paymentDot]} />
-                <Text style={styles.activityText}>
-                  Taxa de conversão: 85%
-                </Text>
-              </View>
-            </View>
           </View>
         </ScrollView>
       )}

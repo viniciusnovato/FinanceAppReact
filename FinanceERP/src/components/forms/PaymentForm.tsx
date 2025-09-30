@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Payment, Contract } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import DatePicker from '../common/DatePicker';
 import ApiService from '../../services/api';
 
 interface PaymentFormProps {
@@ -254,19 +255,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 keyboardType="numeric"
               />
 
-              <Input
+              <DatePicker
                 label="Data de Vencimento *"
                 value={formData.due_date}
-                onChangeText={(value) => updateField('due_date', value)}
+                onDateChange={(value) => updateField('due_date', value)}
                 error={errors.due_date}
                 placeholder="DD/MM/AAAA"
+                mode="date"
               />
 
-              <Input
+              <DatePicker
                 label="Data de Pagamento"
                 value={formData.paid_date}
-                onChangeText={(value) => updateField('paid_date', value)}
+                onDateChange={(value) => updateField('paid_date', value)}
                 placeholder="DD/MM/AAAA"
+                mode="date"
               />
             </View>
 

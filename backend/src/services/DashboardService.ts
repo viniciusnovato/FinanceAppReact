@@ -21,7 +21,7 @@ export interface DashboardStats {
 
 export class DashboardService {
   /**
-   * Obter estatísticas completas do dashboard
+   * Obter estatísticas do dashboard
    */
   async getStats(): Promise<DashboardStats> {
     try {
@@ -40,6 +40,12 @@ export class DashboardService {
       const { count: totalContracts } = await supabase
         .from('contracts')
         .select('*', { count: 'exact', head: true });
+
+      // Obter contratos ativos
+      const { count: activeContracts } = await supabase
+        .from('contracts')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'ativo');
 
       // Obter total de pagamentos
       const { count: totalPayments } = await supabase
@@ -66,12 +72,6 @@ export class DashboardService {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'overdue');
 
-      // Obter contratos ativos
-      const { count: activeContracts } = await supabase
-        .from('contracts')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo');
-
       // Obter receita mensal dos últimos 6 meses
       const monthlyRevenue = await this.getMonthlyRevenue();
 
@@ -88,11 +88,11 @@ export class DashboardService {
         pendingPayments: pendingPayments || 0,
         overduePayments: overduePayments || 0,
         monthlyRevenue,
-        paymentsByStatus,
+        paymentsByStatus
       };
     } catch (error) {
       console.error('Erro ao obter estatísticas do dashboard:', error);
-      throw new Error('Não foi possível obter as estatísticas do dashboard');
+      throw error;
     }
   }
 
@@ -137,20 +137,53 @@ export class DashboardService {
    */
   private async getPaymentsByStatus(): Promise<Array<{ status: string; count: number }>> {
     try {
-      const { data: payments } = await supabase
+      // Forçar uma nova consulta sem cache
+      const { data: payments, error } = await supabase
         .from('payments')
-        .select('status');
+        .select('status, due_date')
+        .order('created_at', { ascending: false });
 
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      if (!payments) return [];
+
+      const today = new Date();
       const statusCount: { [key: string]: number } = {};
 
-      payments?.forEach((payment: any) => {
-        statusCount[payment.status] = (statusCount[payment.status] || 0) + 1;
+      payments.forEach((payment: any) => {
+        let status = payment.status;
+        
+        // Se o pagamento está pendente e passou da data de vencimento, considerar como atrasado
+        if (status === 'pending' && payment.due_date) {
+          const dueDate = new Date(payment.due_date);
+          
+          if (dueDate < today) {
+            status = 'overdue';
+          }
+          // Se não passou da data de vencimento, mantém como 'pending'
+        }
+        
+        statusCount[status] = (statusCount[status] || 0) + 1;
       });
 
-      return Object.entries(statusCount).map(([status, count]) => ({
+      // Garantir que todos os status principais existam no resultado
+      const result = Object.entries(statusCount).map(([status, count]) => ({
         status,
         count,
       }));
+
+      // Adicionar status com count 0 se não existirem
+      const allStatuses = ['paid', 'pending', 'overdue', 'cancelled'];
+      allStatuses.forEach(status => {
+        if (!result.find(item => item.status === status)) {
+          result.push({ status, count: 0 });
+        }
+      });
+
+      return result;
     } catch (error) {
       console.error('Erro ao obter pagamentos por status:', error);
       return [];

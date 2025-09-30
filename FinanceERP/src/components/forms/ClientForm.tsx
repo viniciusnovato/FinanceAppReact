@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Client } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import DatePicker from '../common/DatePicker';
 
 interface ClientFormProps {
   visible: boolean;
@@ -267,11 +268,12 @@ const ClientForm: React.FC<ClientFormProps> = ({
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Informações Adicionais</Text>
               
-              <Input
+              <DatePicker
                 label="Data de Nascimento"
                 value={formData.birth_date}
-                onChangeText={(value) => updateField('birth_date', value)}
+                onDateChange={(value) => updateField('birth_date', value)}
                 placeholder="DD/MM/AAAA"
+                mode="date"
               />
 
               <Input

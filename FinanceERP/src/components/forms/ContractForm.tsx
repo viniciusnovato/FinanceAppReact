@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Contract, Client } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
+import DatePicker from '../common/DatePicker';
 import ApiService from '../../services/api';
 
 interface ContractFormProps {
@@ -282,19 +283,21 @@ const ContractForm: React.FC<ContractFormProps> = ({
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Datas</Text>
               
-              <Input
+              <DatePicker
                 label="Data de Início *"
                 value={formData.start_date}
-                onChangeText={(value) => updateField('start_date', value)}
+                onDateChange={(value) => updateField('start_date', value)}
                 error={errors.start_date}
                 placeholder="DD/MM/AAAA"
+                mode="date"
               />
 
-              <Input
+              <DatePicker
                 label="Data de Término"
                 value={formData.end_date}
-                onChangeText={(value) => updateField('end_date', value)}
+                onDateChange={(value) => updateField('end_date', value)}
                 placeholder="DD/MM/AAAA"
+                mode="date"
               />
             </View>
 

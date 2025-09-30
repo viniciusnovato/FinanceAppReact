@@ -72,7 +72,14 @@ export interface DashboardStats {
   overduePayments: number;
   activeClients: number;
   totalReceived: number;
-  monthlyRevenue: number;
+  monthlyRevenue: Array<{
+    month: string;
+    revenue: number;
+  }>;
+  paymentsByStatus: Array<{
+    status: string;
+    count: number;
+  }>;
 }
 
 export interface AuthContextType {
