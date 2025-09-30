@@ -22,6 +22,31 @@ export class PaymentController {
     }
   };
 
+  getAllPaymentsPaginated = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const result = await this.paymentService.getAllPaymentsPaginated({ page, limit });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Paginated payments retrieved successfully',
+        data: {
+          data: result.data,
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+          hasNextPage: result.hasNextPage,
+          hasPreviousPage: result.hasPreviousPage
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   getPaymentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
@@ -46,6 +71,32 @@ export class PaymentController {
         success: true,
         message: 'Payments retrieved successfully',
         data: payments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getPaymentsByContractIdPaginated = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { contractId } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const result = await this.paymentService.getPaymentsByContractIdPaginated(contractId, { page, limit });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Paginated payments by contract retrieved successfully',
+        data: {
+          data: result.data,
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+          hasNextPage: result.hasNextPage,
+          hasPreviousPage: result.hasPreviousPage
+        }
       });
     } catch (error) {
       next(error);

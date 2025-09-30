@@ -13,6 +13,7 @@ import { Client } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import DatePicker from '../common/DatePicker';
+import Yup from 'yup';
 
 interface ClientFormProps {
   visible: boolean;
@@ -39,7 +40,6 @@ const ClientForm: React.FC<ClientFormProps> = ({
     birth_date: '',
     address: '',
     city: '',
-    state: '',
     postal_code: '',
     country: '',
     notes: '',
@@ -60,7 +60,6 @@ const ClientForm: React.FC<ClientFormProps> = ({
         birth_date: client.birth_date || '',
         address: client.address || '',
         city: client.city || '',
-        state: client.state || '',
         postal_code: client.postal_code || '',
         country: client.country || '',
         notes: client.notes || '',
@@ -78,7 +77,6 @@ const ClientForm: React.FC<ClientFormProps> = ({
         birth_date: '',
         address: '',
         city: '',
-        state: '',
         postal_code: '',
         country: '',
         notes: '',
@@ -214,13 +212,13 @@ const ClientForm: React.FC<ClientFormProps> = ({
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Endereço</Text>
+              <Text style={styles.sectionTitle}>Morada</Text>
               
               <Input
-                label="Endereço"
+                label="Morada"
                 value={formData.address}
                 onChangeText={(value) => updateField('address', value)}
-                placeholder="Digite o endereço completo"
+                placeholder="Digite a morada completa"
                 multiline
                 numberOfLines={2}
               />
@@ -236,33 +234,21 @@ const ClientForm: React.FC<ClientFormProps> = ({
                 </View>
                 <View style={styles.halfWidth}>
                   <Input
-                    label="Estado"
-                    value={formData.state}
-                    onChangeText={(value) => updateField('state', value)}
-                    placeholder="Estado"
+                    label="Código Postal"
+                    value={formData.postal_code}
+                    onChangeText={(value) => updateField('postal_code', value)}
+                    placeholder="0000-000"
+                    keyboardType="numeric"
                   />
                 </View>
               </View>
 
-              <View style={styles.row}>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="CEP"
-                    value={formData.postal_code}
-                    onChangeText={(value) => updateField('postal_code', value)}
-                    placeholder="CEP"
-                    keyboardType="numeric"
-                  />
-                </View>
-                <View style={styles.halfWidth}>
-                  <Input
-                    label="País"
-                    value={formData.country}
-                    onChangeText={(value) => updateField('country', value)}
-                    placeholder="País"
-                  />
-                </View>
-              </View>
+              <Input
+                label="País"
+                value={formData.country}
+                onChangeText={(value) => updateField('country', value)}
+                placeholder="Portugal"
+              />
             </View>
 
             <View style={styles.section}>
@@ -296,7 +282,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
             style={styles.cancelButton}
           />
           <Button
-            title={client ? 'Atualizar' : 'Criar Cliente'}
+            title={client ? 'Actualizar' : 'Criar Cliente'}
             onPress={handleSubmit}
             disabled={isLoading}
             style={styles.submitButton}

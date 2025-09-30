@@ -312,21 +312,21 @@ const ContractForm: React.FC<ContractFormProps> = ({
               />
 
               <Input
-                label="Valor da Entrada"
+                label="Entrada"
+                placeholder="Introduza o valor da entrada"
                 value={formData.down_payment}
-                onChangeText={(value) => updateField('down_payment', value)}
-                error={errors.down_payment}
-                placeholder="0,00"
+                onChangeText={(text) => setFormData({ ...formData, down_payment: text })}
                 keyboardType="numeric"
+                error={errors.down_payment}
               />
 
               <Input
-                label="Número de Parcelas"
+                label="Número de Pagamentos"
+                placeholder="Introduza o número de pagamentos"
                 value={formData.number_of_payments}
-                onChangeText={(value) => updateField('number_of_payments', value)}
-                error={errors.number_of_payments}
-                placeholder="Ex: 12"
+                onChangeText={(text) => setFormData({ ...formData, number_of_payments: text })}
                 keyboardType="numeric"
+                error={errors.number_of_payments}
               />
             </View>
 
@@ -353,7 +353,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
             style={styles.cancelButton}
           />
           <Button
-            title={contract ? 'Atualizar' : 'Criar Contrato'}
+            title={contract ? 'Actualizar' : 'Criar Contrato'}
             onPress={handleSubmit}
             disabled={isLoading}
             style={styles.submitButton}

@@ -167,22 +167,23 @@ const ContractsScreen: React.FC = () => {
         // Update existing contract
         const response = await ApiService.updateContract(editingContract.id, contractData);
         if (response.success && response.data) {
-          setContracts(contracts.map(c => 
-            c.id === editingContract.id ? response.data! : c
-          ));
-          Alert.alert('Sucesso', 'Contrato atualizado com sucesso');
+          setContracts(contracts.map(c => c.id === editingContract.id ? response.data : c));
+          Alert.alert('Sucesso', 'Contrato actualizado com sucesso');
         }
       } else {
         // Create new contract
         const response = await ApiService.createContract(contractData);
         if (response.success && response.data) {
-          setContracts([response.data, ...contracts]);
+          setContracts([...contracts, response.data]);
           Alert.alert('Sucesso', 'Contrato criado com sucesso');
         }
       }
+      
+      setShowContractForm(false);
+      setEditingContract(null);
     } catch (error) {
       console.error('Error submitting contract:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o contrato');
+      Alert.alert('Erro', 'Não foi possível guardar o contrato');
     } finally {
       setIsSubmitting(false);
     }
@@ -194,6 +195,7 @@ const ContractsScreen: React.FC = () => {
   };
 
   const handleRowPress = (contract: Contract) => {
+    // Navigate directly to payments for this contract
     navigation.navigate('Payments', { contractId: contract.id });
   };
 
@@ -389,22 +391,35 @@ const ContractsScreen: React.FC = () => {
       title: 'Início',
       sortable: true,
       width: isTablet ? 100 : 80,
-      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-BR'),
+      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
     },
     {
       key: 'end_date',
       title: 'Fim',
       sortable: true,
       width: isTablet ? 100 : 80,
-      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-BR'),
+      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
+    },
+    {
+      key: 'created_at',
+      title: 'Registo',
+      sortable: true,
+      width: isTablet ? 120 : 90,
+      render: (contract: Contract, date: string) => new Date(date).toLocaleDateString('pt-PT'),
     },
     {
       key: 'actions',
       title: 'Ações',
       sortable: false,
-      width: isTablet ? 120 : 100,
+      width: isTablet ? 140 : 120,
       render: (contract: Contract) => (
         <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.viewPaymentsButton]}
+            onPress={() => navigation.navigate('Payments', { contractId: contract.id })}
+          >
+            <Ionicons name="card" size={16} color="#10B981" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.editButton]}
             onPress={() => handleEditContract(contract)}
@@ -437,7 +452,7 @@ const ContractsScreen: React.FC = () => {
 
           <View style={styles.searchContainer}>
             <Input
-              placeholder="Buscar por nome do cliente ou número do contrato..."
+              placeholder="Procurar por título do contrato..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
@@ -468,9 +483,9 @@ const ContractsScreen: React.FC = () => {
       
       <ConfirmDialog
         visible={showConfirmDialog}
-        title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir o contrato "${contractToDelete?.contract_number || contractToDelete?.description}"?`}
-        confirmText="Excluir"
+        title="Confirmar Eliminação"
+        message={`Tem certeza que deseja eliminar o contrato "${contractToDelete?.contract_number || contractToDelete?.description}"?`}
+        confirmText="Eliminar"
         cancelText="Cancelar"
         onConfirm={confirmDeleteContract}
         onCancel={() => setShowConfirmDialog(false)}
@@ -607,6 +622,10 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+  },
+  viewPaymentsButton: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
 });
 

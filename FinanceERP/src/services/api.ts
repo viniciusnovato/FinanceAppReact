@@ -130,12 +130,36 @@ class ApiService {
     return this.request('/payments');
   }
 
+  async getPaymentsPaginated(page: number = 1, limit: number = 1000): Promise<ApiResponse<{
+    data: Payment[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }>> {
+    return this.request(`/payments/paginated?page=${page}&limit=${limit}`);
+  }
+
   async getPayment(id: string): Promise<ApiResponse<Payment>> {
     return this.request(`/payments/${id}`);
   }
 
   async getPaymentsByContract(contractId: string): Promise<ApiResponse<Payment[]>> {
-    return this.request(`/payments?contract_id=${contractId}`);
+    return this.request(`/payments/contract/${contractId}`);
+  }
+
+  async getPaymentsByContractPaginated(contractId: string, page: number = 1, limit: number = 1000): Promise<ApiResponse<{
+    data: Payment[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }>> {
+    return this.request(`/payments/contract/${contractId}/paginated?page=${page}&limit=${limit}`);
   }
 
   async createPayment(payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Payment>> {

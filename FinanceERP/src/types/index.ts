@@ -11,7 +11,6 @@ export interface Client {
   birth_date?: string;
   address?: string;
   city?: string;
-  state?: string;
   postal_code?: string;
   country?: string;
   notes?: string;

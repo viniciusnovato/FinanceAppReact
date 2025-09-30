@@ -81,21 +81,72 @@ const PaymentsScreen: React.FC = () => {
   const loadPayments = async () => {
     try {
       setIsLoading(true);
-      const response = await ApiService.getPayments();
-      if (response.success && response.data) {
-        setPayments(response.data);
+      
+      if (contractId) {
+        // Load payments for specific contract using pagination to get all payments
+        console.log('🔍 Loading payments for contract:', contractId);
         
-        // If contractId is provided, find the contract number and set it in search
-        if (contractId && response.data.length > 0) {
-          const paymentWithContract = response.data.find(payment => payment.contract_id === contractId);
-          if (paymentWithContract && paymentWithContract.contract?.contract_number) {
-            const contractNum = paymentWithContract.contract.contract_number;
-            setContractNumber(contractNum);
-            setSearchQuery(contractNum);
+        let allContractPayments: Payment[] = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const response = await ApiService.getPaymentsByContractPaginated(contractId, page, 1000);
+          
+          if (response.success && response.data) {
+            allContractPayments.push(...response.data.data);
+            hasMore = response.data.hasNextPage;
+            page++;
+            
+            console.log(`📄 Loaded page ${page - 1}: ${response.data.data.length} payments, Total so far: ${allContractPayments.length}`);
+          } else {
+            hasMore = false;
+          }
+          
+          // Safety break to avoid infinite loops
+          if (page > 50) {
+            console.warn('⚠️ Stopped loading after 50 pages to prevent infinite loop');
+            break;
           }
         }
+        
+        setPayments(allContractPayments);
+        console.log(`✅ Total payments loaded for contract: ${allContractPayments.length}`);
+        
+        // Find the contract number for display purposes
+        if (allContractPayments.length > 0 && allContractPayments[0].contract?.contract_number) {
+          setContractNumber(allContractPayments[0].contract.contract_number);
+        }
       } else {
-        Alert.alert('Erro', 'Não foi possível carregar os pagamentos');
+        // Load all payments using pagination to get all payments
+        console.log('🔍 Loading all payments with pagination...');
+        
+        let allPayments: Payment[] = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const response = await ApiService.getPaymentsPaginated(page, 1000);
+          
+          if (response.success && response.data) {
+            allPayments.push(...response.data.data);
+            hasMore = response.data.hasNextPage;
+            page++;
+            
+            console.log(`📄 Loaded page ${page - 1}: ${response.data.data.length} payments, Total so far: ${allPayments.length}`);
+          } else {
+            hasMore = false;
+          }
+          
+          // Safety break to avoid infinite loops
+          if (page > 50) {
+            console.warn('⚠️ Stopped loading after 50 pages to prevent infinite loop');
+            break;
+          }
+        }
+        
+        setPayments(allPayments);
+        console.log(`✅ Total payments loaded: ${allPayments.length}`);
       }
     } catch (error) {
       console.error('Error loading payments:', error);
@@ -107,6 +158,11 @@ const PaymentsScreen: React.FC = () => {
 
   const filterPayments = () => {
     let filtered = payments;
+    
+    // If contractId is provided, filter by contract first
+    if (contractId) {
+      filtered = filtered.filter(payment => payment.contract_id === contractId);
+    }
     
     // Apply status filter
     if (activeFilter !== 'all') {
@@ -121,8 +177,8 @@ const PaymentsScreen: React.FC = () => {
       });
     }
     
-    // Apply search filter
-    if (searchQuery.trim()) {
+    // Apply search filter (only if no contractId is provided)
+    if (searchQuery.trim() && !contractId) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(payment => {
         // Search by client name
@@ -332,31 +388,27 @@ const PaymentsScreen: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      let response: any;
       if (editingPayment) {
         // Update existing payment
-        response = await ApiService.updatePayment(editingPayment.id, paymentData);
+        const response = await ApiService.updatePayment(editingPayment.id, paymentData);
         if (response.success && response.data) {
-          setPayments(payments.map(payment => 
-            payment.id === editingPayment.id ? response.data! : payment
-          ));
-          Alert.alert('Sucesso', 'Pagamento atualizado com sucesso');
+          setPayments(payments.map(p => p.id === editingPayment.id ? response.data : p));
+          Alert.alert('Sucesso', 'Pagamento actualizado com sucesso');
         }
       } else {
         // Create new payment
-        response = await ApiService.createPayment(paymentData);
+        const response = await ApiService.createPayment(paymentData);
         if (response.success && response.data) {
           setPayments([...payments, response.data]);
           Alert.alert('Sucesso', 'Pagamento criado com sucesso');
         }
       }
       
-      if (!response.success) {
-        Alert.alert('Erro', 'Falha ao salvar pagamento');
-      }
+      setShowPaymentForm(false);
+      setEditingPayment(null);
     } catch (error) {
       console.error('Error submitting payment:', error);
-      Alert.alert('Erro', 'Falha ao salvar pagamento');
+      Alert.alert('Erro', 'Não foi possível guardar o pagamento');
     } finally {
       setIsSubmitting(false);
     }
@@ -369,12 +421,11 @@ const PaymentsScreen: React.FC = () => {
 
   const handleRowPress = (payment: Payment) => {
     Alert.alert(
-      'Ações do Pagamento',
-      `${payment.contract?.contract_number} - ${formatCurrency(payment.amount || 0)}`,
+      'Acções do Pagamento',
+      `Valor: ${formatCurrency(payment.amount)}`,
       [
-        { text: 'Marcar como Pago', onPress: () => markAsPago(payment.id) },
         { text: 'Editar', onPress: () => handleEditPayment(payment) },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeletePayment(payment) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => handleDeletePayment(payment) },
         { text: 'Cancelar', style: 'cancel' },
       ]
     );
@@ -510,7 +561,7 @@ const PaymentsScreen: React.FC = () => {
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>Pagamentos</Text>
-              {contractNumber && searchQuery === contractNumber && (
+              {contractId && contractNumber && (
                 <Text style={styles.subtitle}>
                   Filtrado por contrato: {contractNumber}
                 </Text>
@@ -525,10 +576,11 @@ const PaymentsScreen: React.FC = () => {
 
           <View style={styles.searchContainer}>
             <Input
-              placeholder="Buscar por nome do cliente, número do contrato ou ID do pagamento..."
+              placeholder={contractId ? "Pesquisa desabilitada - a mostrar apenas pagamentos do contrato seleccionado" : "Buscar por nome do cliente, número do contrato ou ID do pagamento..."}
               value={searchQuery}
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
+              editable={!contractId}
             />
           </View>
 
@@ -585,9 +637,9 @@ const PaymentsScreen: React.FC = () => {
       
       <ConfirmDialog
         visible={showConfirmDialog}
-        title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir o pagamento de ${paymentToDelete?.contract?.contract_number}?`}
-        confirmText="Excluir"
+        title="Confirmar Eliminação"
+        message={`Tem a certeza que deseja eliminar este pagamento de ${formatCurrency(paymentToDelete?.amount || 0)}?`}
+        confirmText="Eliminar"
         cancelText="Cancelar"
         onConfirm={confirmDeletePayment}
         onCancel={() => setShowConfirmDialog(false)}

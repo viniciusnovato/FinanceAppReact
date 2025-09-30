@@ -114,7 +114,7 @@ const ClientsScreen: React.FC = () => {
         const response = await ApiService.updateClient(editingClient.id, clientData);
         if (response.success && response.data) {
           setClients(clients.map(c => c.id === editingClient.id ? response.data : c));
-          Alert.alert('Sucesso', 'Cliente atualizado com sucesso');
+          Alert.alert('Sucesso', 'Cliente actualizado com sucesso');
         }
       } else {
         // Create new client
@@ -129,7 +129,7 @@ const ClientsScreen: React.FC = () => {
       setEditingClient(null);
     } catch (error) {
       console.error('Error submitting client:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o cliente');
+      Alert.alert('Erro', 'Não foi possível guardar o cliente');
     } finally {
       setIsSubmitting(false);
     }
@@ -202,11 +202,11 @@ const ClientsScreen: React.FC = () => {
 
   const handleRowPress = (client: Client) => {
     Alert.alert(
-      'Ações do Cliente',
+      'Acções do Cliente',
       `${client.first_name} ${client.last_name}`,
       [
         { text: 'Editar', onPress: () => handleEditClient(client) },
-        { text: 'Excluir', style: 'destructive', onPress: () => handleDeleteClient(client) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => handleDeleteClient(client) },
         { text: 'Cancelar', style: 'cancel' },
       ]
     );
@@ -385,10 +385,10 @@ const ClientsScreen: React.FC = () => {
     },
     {
       key: 'created_at',
-      title: 'Cadastro',
+      title: 'Registo',
       sortable: true,
       width: isTablet ? 120 : 90,
-      render: (client: Client, date: string) => new Date(date).toLocaleDateString('pt-BR'),
+      render: (client: Client, date: string) => new Date(date).toLocaleDateString('pt-PT'),
     },
     {
       key: 'actions',
@@ -429,7 +429,7 @@ const ClientsScreen: React.FC = () => {
 
           <View style={styles.searchContainer}>
             <Input
-              placeholder="Buscar por nome, email ou NIF..."
+              placeholder="Procurar por nome do cliente..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
@@ -461,16 +461,13 @@ const ClientsScreen: React.FC = () => {
 
       <ConfirmDialog
         visible={showConfirmDialog}
-        title="Excluir Cliente"
-        message={`Tem certeza que deseja excluir o cliente "${clientToDelete?.first_name} ${clientToDelete?.last_name}"? Esta ação não pode ser desfeita.`}
-        confirmText="Excluir"
+        title="Confirmar Eliminação"
+        message={`Tem a certeza que deseja eliminar o cliente "${clientToDelete?.first_name} ${clientToDelete?.last_name}"?`}
+        confirmText="Eliminar"
         cancelText="Cancelar"
         onConfirm={confirmDeleteClient}
-        onCancel={() => {
-          setShowConfirmDialog(false);
-          setClientToDelete(null);
-        }}
-        isDestructive
+        onCancel={() => setShowConfirmDialog(false)}
+        isDestructive={true}
         isLoading={isSubmitting}
       />
     </MainLayout>

@@ -1,4 +1,4 @@
-import { PaymentRepository } from '../repositories/paymentRepository';
+import { PaymentRepository, PaginationOptions, PaginatedResult } from '../repositories/paymentRepository';
 import { ContractRepository } from '../repositories/contractRepository';
 import { Payment } from '../models';
 import { createError } from '../middlewares/errorHandler';
@@ -14,6 +14,10 @@ export class PaymentService {
 
   async getAllPayments(): Promise<Payment[]> {
     return this.paymentRepository.findAll();
+  }
+
+  async getAllPaymentsPaginated(options: PaginationOptions = {}): Promise<PaginatedResult<Payment>> {
+    return this.paymentRepository.findAllPaginated(options);
   }
 
   async getPaymentById(id: string): Promise<Payment> {
@@ -32,6 +36,16 @@ export class PaymentService {
     }
 
     return this.paymentRepository.findByContractId(contractId);
+  }
+
+  async getPaymentsByContractIdPaginated(contractId: string, options: PaginationOptions = {}): Promise<PaginatedResult<Payment>> {
+    // Verify contract exists
+    const contract = await this.contractRepository.findById(contractId);
+    if (!contract) {
+      throw createError('Contract not found', 404);
+    }
+
+    return this.paymentRepository.findByContractIdPaginated(contractId, options);
   }
 
   async createPayment(paymentData: Omit<Payment, 'id' | 'created_at' | 'updated_at'>): Promise<Payment> {

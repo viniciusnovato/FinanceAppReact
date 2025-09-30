@@ -319,12 +319,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               <Text style={styles.sectionTitle}>Observações</Text>
               
               <Input
-                label="Notas"
+                label="Observações"
+                placeholder="Introduza observações adicionais"
                 value={formData.notes}
-                onChangeText={(value) => updateField('notes', value)}
-                placeholder="Observações sobre o pagamento"
+                onChangeText={(text) => setFormData({ ...formData, notes: text })}
                 multiline
                 numberOfLines={3}
+                error={errors.notes}
               />
             </View>
           </View>
@@ -338,7 +339,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             style={styles.cancelButton}
           />
           <Button
-            title={payment ? 'Atualizar' : 'Criar Pagamento'}
+            title={payment ? 'Actualizar' : 'Criar Pagamento'}
             onPress={handleSubmit}
             disabled={isLoading}
             style={styles.submitButton}
