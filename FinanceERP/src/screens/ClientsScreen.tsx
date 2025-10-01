@@ -9,6 +9,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { Client } from '../types';
 import ApiService from '../services/api';
 import Button from '../components/common/Button';
@@ -17,12 +19,16 @@ import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
 const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
+type ClientsScreenNavigationProp = StackNavigationProp<MainStackParamList, 'Clients'>;
+
 const ClientsScreen: React.FC = () => {
+  const navigation = useNavigation<ClientsScreenNavigationProp>();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -206,15 +212,15 @@ const ClientsScreen: React.FC = () => {
   };
 
   const handleRowPress = (client: Client) => {
-    Alert.alert(
-      'Acções do Cliente',
-      `${client.first_name} ${client.last_name}`,
-      [
-        { text: 'Editar', onPress: () => handleEditClient(client) },
-        { text: 'Eliminar', style: 'destructive', onPress: () => handleDeleteClient(client) },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
+    console.log('handleRowPress called with client:', client);
+    handleViewClientContracts(client);
+  };
+
+  const handleViewClientContracts = (client: Client) => {
+    navigation.navigate('Contracts', {
+      clientId: client.id,
+      clientName: `${client.first_name} ${client.last_name}`
+    });
   };
 
   // Pagination functions

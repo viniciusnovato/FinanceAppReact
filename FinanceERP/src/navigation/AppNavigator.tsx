@@ -23,7 +23,7 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Dashboard: undefined;
   Clients: undefined;
-  Contracts: undefined;
+  Contracts: { clientId?: string; clientName?: string } | undefined;
   Payments: { contractId?: string } | undefined;
 };
 

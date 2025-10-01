@@ -81,8 +81,12 @@ const DataTable: React.FC<DataTableProps> = ({
         styles.dataRow,
         index % 2 === 0 ? styles.evenRow : styles.oddRow,
       ]}
-      onPress={() => onRowPress?.(item)}
+      onPress={() => {
+        console.log('Row pressed:', item);
+        onRowPress?.(item);
+      }}
       disabled={!onRowPress}
+      activeOpacity={0.7}
     >
       {columns.map((column) => {
         const value = item[column.key];

@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Contract } from '../types';
 import ApiService from '../services/api';
@@ -28,9 +28,11 @@ const isTablet = screenWidth > 768;
 const ITEMS_PER_PAGE = isTablet ? 10 : 8;
 
 type ContractsScreenNavigationProp = StackNavigationProp<MainStackParamList, 'Contracts'>;
+type ContractsScreenRouteProp = RouteProp<MainStackParamList, 'Contracts'>;
 
 const ContractsScreen: React.FC = () => {
   const navigation = useNavigation<ContractsScreenNavigationProp>();
+  const route = useRoute<ContractsScreenRouteProp>();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,13 +70,26 @@ const ContractsScreen: React.FC = () => {
     loadContracts();
   }, []);
 
-  // Filter contracts based on search query
+  // Set initial search query if coming from client selection
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredContracts(contracts);
-    } else {
+    if (route.params?.clientName && !searchQuery) {
+      setSearchQuery(route.params.clientName);
+    }
+  }, [route.params?.clientName]);
+
+  // Filter contracts based on search query and client filter
+  useEffect(() => {
+    let filtered = contracts;
+
+    // Filter by client ID if provided
+    if (route.params?.clientId) {
+      filtered = filtered.filter(contract => contract.client_id === route.params?.clientId);
+    }
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      const filtered = contracts.filter(contract => {
+      filtered = filtered.filter(contract => {
         // Search by contract number
         const contractNumber = contract.contract_number?.toLowerCase() || '';
         
@@ -85,10 +100,11 @@ const ContractsScreen: React.FC = () => {
         
         return contractNumber.includes(query) || clientName.includes(query);
       });
-      setFilteredContracts(filtered);
     }
+
+    setFilteredContracts(filtered);
     setCurrentPage(1); // Reset to first page when filtering
-  }, [searchQuery, contracts]);
+  }, [searchQuery, contracts, route.params?.clientId]);
 
   const loadContracts = async () => {
     try {
@@ -461,7 +477,14 @@ const ContractsScreen: React.FC = () => {
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>Contratos</Text>
+            <View>
+              <Text style={styles.title}>Contratos</Text>
+              {route.params?.clientName && (
+                <Text style={styles.subtitle}>
+                  Filtrado por: {route.params.clientName}
+                </Text>
+              )}
+            </View>
             <Button
               title="Novo Contrato"
               onPress={handleCreateContract}
@@ -547,6 +570,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 4,
   },
   searchContainer: {
     marginBottom: 20,

@@ -171,6 +171,31 @@ export class ContractRepository {
         paymentsCount: contract.payments?.length || 0
       });
 
+      // Debug: Log the raw payments structure
+      console.log('🔍 ContractRepository: Raw payments structure:', {
+        paymentsExists: !!contract.payments,
+        paymentsType: typeof contract.payments,
+        paymentsIsArray: Array.isArray(contract.payments),
+        paymentsLength: contract.payments?.length,
+        firstPayment: contract.payments?.[0] || 'No first payment'
+      });
+
+      // Log detailed payment information for debugging
+      if (contract.payments && contract.payments.length > 0) {
+        console.log('💰 ContractRepository: Payment details:');
+        contract.payments.forEach((payment: any, index: number) => {
+          console.log(`  Payment ${index + 1}:`, {
+            id: payment.id,
+            payment_type: payment.payment_type,
+            amount: payment.amount,
+            status: payment.status,
+            due_date: payment.due_date
+          });
+        });
+      } else {
+        console.log('❌ ContractRepository: No payments found in contract data');
+      }
+
       // Calculate paid percentage
       const downPayment = parseFloat(contract.down_payment || '0');
       const contractValue = parseFloat(contract.value || '0');
@@ -184,9 +209,12 @@ export class ContractRepository {
       const totalPaid = downPayment + totalPaidFromPayments;
       const paidPercentage = contractValue > 0 ? (totalPaid / contractValue) * 100 : 0;
 
-      // Organize payments by type
+      // Filter payments by type
       const regularPayments = contract.payments?.filter((payment: any) => 
-        !payment.payment_type || payment.payment_type === 'installment'
+        payment.payment_type === 'installment' || 
+        payment.payment_type === 'normalPayment' || 
+        payment.payment_type === 'downPayment' ||
+        !payment.payment_type
       ) || [];
       
       const complementaryPayments = contract.payments?.filter((payment: any) => 
@@ -195,6 +223,7 @@ export class ContractRepository {
 
       const result = {
         ...contract,
+        client: contract.client,
         paidPercentage: Math.round(paidPercentage * 100) / 100, // Round to 2 decimal places
         totalPaid,
         totalPaidFromPayments,
@@ -202,19 +231,14 @@ export class ContractRepository {
         complementaryPayments,
         paymentsSummary: {
           total: contract.payments?.length || 0,
-          paid: paidPayments.length,
-          pending: contract.payments?.filter((payment: any) => payment.status === 'pending').length || 0,
-          overdue: contract.payments?.filter((payment: any) => payment.status === 'overdue').length || 0,
-          failed: contract.payments?.filter((payment: any) => payment.status === 'failed').length || 0
+          paid: contract.payments?.filter((p: any) => p.status === 'paid').length || 0,
+          pending: contract.payments?.filter((p: any) => p.status === 'pending').length || 0,
+          overdue: contract.payments?.filter((p: any) => p.status === 'overdue').length || 0,
+          failed: contract.payments?.filter((p: any) => p.status === 'failed').length || 0,
+          regularPaymentsCount: regularPayments.length,
+          complementaryPaymentsCount: complementaryPayments.length
         }
       };
-
-      console.log('✅ ContractRepository: Returning contract details:', {
-        id: result.id,
-        paidPercentage: result.paidPercentage,
-        totalPaid: result.totalPaid,
-        paymentsSummary: result.paymentsSummary
-      });
 
       return result;
     } catch (error) {

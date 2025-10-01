@@ -103,8 +103,7 @@ class ApiService {
 
   async getContractDetails(id: string): Promise<any> {
     const response = await this.request<any>(`/contracts/${id}/details`);
-    console.log('🔍 ApiService: getContractDetails response:', response);
-    return response.success ? response.data : response;
+    return response;
   }
 
   async getContractsByClient(clientId: string): Promise<ApiResponse<Contract[]>> {
