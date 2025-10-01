@@ -139,6 +139,8 @@ export class ContractRepository {
 
   async findContractDetails(id: string): Promise<any> {
     try {
+      console.log('🔍 ContractRepository: Finding contract details for ID:', id);
+      
       // Get contract with client and all payments
       const { data: contract, error: contractError } = await supabase
         .from('contracts')
@@ -150,8 +152,24 @@ export class ContractRepository {
         .eq('id', id)
         .single();
 
-      if (contractError && contractError.code !== 'PGRST116') throw contractError;
-      if (!contract) return null;
+      console.log('📊 ContractRepository: Supabase query result:', { contract, contractError });
+
+      if (contractError && contractError.code !== 'PGRST116') {
+        console.error('❌ ContractRepository: Supabase error:', contractError);
+        throw contractError;
+      }
+      
+      if (!contract) {
+        console.log('❌ ContractRepository: Contract not found for ID:', id);
+        return null;
+      }
+
+      console.log('✅ ContractRepository: Contract found:', {
+        id: contract.id,
+        contract_number: contract.contract_number,
+        client: contract.client,
+        paymentsCount: contract.payments?.length || 0
+      });
 
       // Calculate paid percentage
       const downPayment = parseFloat(contract.down_payment || '0');
@@ -175,7 +193,7 @@ export class ContractRepository {
         payment.payment_type && payment.payment_type.startsWith('comp')
       ) || [];
 
-      return {
+      const result = {
         ...contract,
         paidPercentage: Math.round(paidPercentage * 100) / 100, // Round to 2 decimal places
         totalPaid,
@@ -190,8 +208,17 @@ export class ContractRepository {
           failed: contract.payments?.filter((payment: any) => payment.status === 'failed').length || 0
         }
       };
+
+      console.log('✅ ContractRepository: Returning contract details:', {
+        id: result.id,
+        paidPercentage: result.paidPercentage,
+        totalPaid: result.totalPaid,
+        paymentsSummary: result.paymentsSummary
+      });
+
+      return result;
     } catch (error) {
-      console.error('Error fetching contract details:', error);
+      console.error('❌ ContractRepository: Error fetching contract details:', error);
       throw new Error('Failed to fetch contract details');
     }
   }

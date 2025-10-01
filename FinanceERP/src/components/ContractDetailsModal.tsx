@@ -15,6 +15,7 @@ interface ContractDetails {
   value: string;
   down_payment: string;
   installments: number;
+  number_of_payments: number;
   status: string;
   start_date: string;
   end_date: string;
@@ -54,14 +55,24 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
   }, [visible, contractId]);
 
   const loadContractDetails = async () => {
-    if (!contractId) return;
+    if (!contractId) {
+      console.log('❌ ContractDetailsModal: contractId is null or undefined');
+      return;
+    }
 
+    console.log('🔍 ContractDetailsModal: Loading details for contractId:', contractId);
     setLoading(true);
     try {
       const details = await ApiService.getContractDetails(contractId);
+      console.log('✅ ContractDetailsModal: Details loaded successfully:', details);
       setContractDetails(details);
     } catch (error) {
-      console.error('Erro ao carregar detalhes do contrato:', error);
+      console.error('❌ ContractDetailsModal: Error loading contract details:', error);
+      console.error('❌ ContractDetailsModal: Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        contractId
+      });
       Alert.alert('Erro', 'Não foi possível carregar os detalhes do contrato');
     } finally {
       setLoading(false);
@@ -70,14 +81,14 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
   const formatCurrency = (value: string | number) => {
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat('pt-PT', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'EUR'
     }).format(numValue);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    return new Date(dateString).toLocaleDateString('pt-PT');
   };
 
   const getStatusColor = (status: string) => {
@@ -193,7 +204,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
   }
 
   return (
-    <Modal visible={visible} onClose={onClose} title={`Contrato ${contractDetails.contract_number}`} width="90%" height="80%">
+    <Modal visible={visible} onClose={onClose} title={`Contrato ${contractDetails.contract_number}`} width="50%" height="60%">
       <View style={styles.container}>
         {/* Contract Info */}
         <View style={styles.section}>
@@ -227,7 +238,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Parcelas:</Text>
-              <Text style={styles.infoValue}>{contractDetails.installments}x</Text>
+              <Text style={styles.infoValue}>{contractDetails.number_of_payments}x</Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Período:</Text>

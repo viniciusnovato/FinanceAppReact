@@ -434,7 +434,7 @@ const PaymentsScreen: React.FC = () => {
       title: 'Vencimento',
       width: 120,
       sortable: true,
-      render: (payment: Payment) => new Date(payment.due_date || '').toLocaleDateString('pt-BR'),
+      render: (payment: Payment) => new Date(payment.due_date || '').toLocaleDateString('pt-PT'),
     },
     {
       key: 'status',

@@ -97,7 +97,7 @@ export class ContractController {
     }
   };
 
-  async getContractsByStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+  getContractsByStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { status } = req.params;
       const contracts = await this.contractService.getContractsByStatus(status);
@@ -105,9 +105,9 @@ export class ContractController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async getContractDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+  getContractDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
       const contractDetails = await this.contractService.getContractDetails(id);
@@ -115,7 +115,7 @@ export class ContractController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
   deleteContractPayments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

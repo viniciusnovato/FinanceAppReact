@@ -25,67 +25,82 @@ export class DashboardService {
    */
   async getStats(): Promise<DashboardStats> {
     try {
-      // Obter total de clientes
-      const { count: totalClients } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true });
+      // Executar todas as consultas em paralelo para melhor performance
+      const [
+        clientsResult,
+        activeClientsResult,
+        contractsResult,
+        activeContractsResult,
+        paymentsResult,
+        contractsValueResult,
+        pendingPaymentsResult,
+        overduePaymentsResult,
+        monthlyRevenue,
+        paymentsByStatus
+      ] = await Promise.all([
+        // Total de clientes
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true }),
+        
+        // Clientes ativos
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'ativo'),
+        
+        // Total de contratos
+        supabase
+          .from('contracts')
+          .select('*', { count: 'exact', head: true }),
+        
+        // Contratos ativos
+        supabase
+          .from('contracts')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'ativo'),
+        
+        // Total de pagamentos
+        supabase
+          .from('payments')
+          .select('*', { count: 'exact', head: true }),
+        
+        // Receita total (soma dos valores dos contratos)
+        supabase
+          .from('contracts')
+          .select('value'),
+        
+        // Pagamentos pendentes
+        supabase
+          .from('payments')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        
+        // Pagamentos em atraso
+        supabase
+          .from('payments')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'overdue'),
+        
+        // Receita mensal
+        this.getMonthlyRevenue(),
+        
+        // Pagamentos por status
+        this.getPaymentsByStatus()
+      ]);
 
-      // Obter clientes ativos
-      const { count: activeClients } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo');
-
-      // Obter total de contratos
-      const { count: totalContracts } = await supabase
-        .from('contracts')
-        .select('*', { count: 'exact', head: true });
-
-      // Obter contratos ativos
-      const { count: activeContracts } = await supabase
-        .from('contracts')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo');
-
-      // Obter total de pagamentos
-      const { count: totalPayments } = await supabase
-        .from('payments')
-        .select('*', { count: 'exact', head: true });
-
-      // Obter receita total (soma dos valores de todos os contratos)
-      const { data: contracts } = await supabase
-        .from('contracts')
-        .select('value');
-
-      const totalRevenue = contracts?.reduce((sum: number, contract: any) => sum + contract.value, 0) || 0;
-
-      // Obter pagamentos pendentes
-      const { count: pendingPayments } = await supabase
-        .from('payments')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      // Obter pagamentos em atraso
-      const { count: overduePayments } = await supabase
-        .from('payments')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'overdue');
-
-      // Obter receita mensal dos últimos 6 meses
-      const monthlyRevenue = await this.getMonthlyRevenue();
-
-      // Obter pagamentos por status
-      const paymentsByStatus = await this.getPaymentsByStatus();
+      // Calcular receita total
+      const totalRevenue = contractsValueResult.data?.reduce((sum: number, contract: any) => sum + contract.value, 0) || 0;
 
       return {
-        totalClients: totalClients || 0,
-        activeClients: activeClients || 0,
-        totalContracts: totalContracts || 0,
-        activeContracts: activeContracts || 0,
-        totalPayments: totalPayments || 0,
+        totalClients: clientsResult.count || 0,
+        activeClients: activeClientsResult.count || 0,
+        totalContracts: contractsResult.count || 0,
+        activeContracts: activeContractsResult.count || 0,
+        totalPayments: paymentsResult.count || 0,
         totalRevenue,
-        pendingPayments: pendingPayments || 0,
-        overduePayments: overduePayments || 0,
+        pendingPayments: pendingPaymentsResult.count || 0,
+        overduePayments: overduePaymentsResult.count || 0,
         monthlyRevenue,
         paymentsByStatus
       };
@@ -113,7 +128,7 @@ export class DashboardService {
 
       payments?.forEach((payment: any) => {
         if (payment.paid_at) {
-          const month = new Date(payment.paid_at).toLocaleDateString('pt-BR', { 
+          const month = new Date(payment.paid_at).toLocaleDateString('pt-PT', { 
             year: 'numeric', 
             month: 'short' 
           });
