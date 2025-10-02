@@ -32,13 +32,19 @@ const DashboardScreen: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
+      console.log('📊 === LOADING DASHBOARD DATA ===');
       setIsLoading(true);
       const response = await ApiService.getDashboardStats();
+      console.log('📊 Dashboard response:', JSON.stringify(response, null, 2));
       if (response.success) {
+        console.log('📊 ✅ Dashboard data loaded successfully');
         setStats(response.data);
+      } else {
+        console.log('📊 ❌ Dashboard response not successful');
       }
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('❌ Error loading dashboard data:', error);
+      console.log('📊 Using mock data for development');
       // Mock data for development - Dados baseados nos números reais do banco
       setStats({
         totalClients: 580,
@@ -50,9 +56,22 @@ const DashboardScreen: React.FC = () => {
         overduePayments: 12,
         totalReceived: 185000,
         totalRevenue: 220000,
-        monthlyRevenue: 18500,
+        monthlyRevenue: [
+          { month: 'Jan', revenue: 15000 },
+          { month: 'Fev', revenue: 18000 },
+          { month: 'Mar', revenue: 22000 },
+          { month: 'Abr', revenue: 19000 },
+          { month: 'Mai', revenue: 25000 },
+          { month: 'Jun', revenue: 18500 },
+        ],
+        paymentsByStatus: [
+          { status: 'paid', count: 1771 },
+          { status: 'pending', count: 67 },
+          { status: 'overdue', count: 12 },
+        ],
       });
     } finally {
+      console.log('📊 === DASHBOARD LOADING COMPLETE ===');
       setIsLoading(false);
     }
   };

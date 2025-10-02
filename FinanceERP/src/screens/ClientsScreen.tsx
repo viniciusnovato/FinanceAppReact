@@ -381,12 +381,7 @@ const ClientsScreen: React.FC = () => {
       sortable: true,
       width: isTablet ? 200 : 120,
     },
-    {
-      key: 'phone',
-      title: 'Telefone',
-      sortable: true,
-      width: isTablet ? 140 : 100,
-    },
+
     {
       key: 'status',
       title: 'Status',
@@ -394,13 +389,7 @@ const ClientsScreen: React.FC = () => {
       width: isTablet ? 100 : 80,
       render: (client: Client, status: string) => renderStatusBadge(status),
     },
-    {
-      key: 'created_at',
-      title: 'Registo',
-      sortable: true,
-      width: isTablet ? 120 : 90,
-      render: (client: Client, date: string) => new Date(date).toLocaleDateString('pt-PT'),
-    },
+
     {
       key: 'actions',
       title: 'Ações',

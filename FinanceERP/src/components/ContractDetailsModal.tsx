@@ -93,6 +93,12 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'ativo': return '#10B981';
+      case 'liquidado': return '#3B82F6';
+      case 'renegociado': return '#F59E0B';
+      case 'cancelado': return '#EF4444';
+      case 'jurídico': return '#7C3AED';
+      // Mantendo compatibilidade com status antigos
       case 'active': return '#10B981';
       case 'completed': return '#3B82F6';
       case 'cancelled': return '#EF4444';
@@ -221,11 +227,17 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 { backgroundColor: getStatusColor(contractDetails.status) }
               ]}>
                 <Text style={styles.statusText}>
-                  {contractDetails.status === 'active' ? 'Ativo' :
-                   contractDetails.status === 'completed' ? 'Concluído' :
-                   contractDetails.status === 'cancelled' ? 'Cancelado' :
-                   contractDetails.status === 'suspended' ? 'Suspenso' : contractDetails.status}
-                </Text>
+                {contractDetails.status === 'ativo' ? 'Ativo' :
+                 contractDetails.status === 'liquidado' ? 'Liquidado' :
+                 contractDetails.status === 'renegociado' ? 'Renegociado' :
+                 contractDetails.status === 'cancelado' ? 'Cancelado' :
+                 contractDetails.status === 'jurídico' ? 'Jurídico' :
+                 // Mantendo compatibilidade com status antigos
+                 contractDetails.status === 'active' ? 'Ativo' :
+                 contractDetails.status === 'completed' ? 'Concluído' :
+                 contractDetails.status === 'cancelled' ? 'Cancelado' :
+                 contractDetails.status === 'suspended' ? 'Suspenso' : contractDetails.status}
+              </Text>
               </View>
             </View>
             <View style={styles.infoItem}>

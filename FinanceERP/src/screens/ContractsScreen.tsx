@@ -396,21 +396,34 @@ const ContractsScreen: React.FC = () => {
       title: 'Status',
       sortable: true,
       width: isTablet ? 100 : 80,
-      render: (contract: Contract, status: string) => (
-        <View style={[
-          styles.statusBadge,
-          status === 'ativo' ? styles.activeBadge :
-          status === 'concluido' ? styles.completedBadge :
-          styles.inactiveBadge
-        ]}>
-          <Text style={[
-            styles.statusText,
-            { color: status === 'ativo' ? '#16A34A' : status === 'concluido' ? '#2563EB' : '#DC2626' }
-          ]}>
-            {status}
-          </Text>
-        </View>
-      ),
+      render: (contract: Contract, status: string) => {
+        const getStatusStyle = (status: string) => {
+          switch (status) {
+            case 'ativo':
+              return { badge: styles.activeBadge, color: '#16A34A' };
+            case 'liquidado':
+              return { badge: styles.completedBadge, color: '#2563EB' };
+            case 'renegociado':
+              return { badge: styles.renegotiatedBadge, color: '#F59E0B' };
+            case 'cancelado':
+              return { badge: styles.cancelledBadge, color: '#DC2626' };
+            case 'jurídico':
+              return { badge: styles.legalBadge, color: '#7C3AED' };
+            default:
+              return { badge: styles.inactiveBadge, color: '#6B7280' };
+          }
+        };
+
+        const statusStyle = getStatusStyle(status);
+        
+        return (
+          <View style={[styles.statusBadge, statusStyle.badge]}>
+            <Text style={[styles.statusText, { color: statusStyle.color }]}>
+              {status}
+            </Text>
+          </View>
+        );
+      },
     },
     {
       key: 'start_date',
@@ -426,13 +439,7 @@ const ContractsScreen: React.FC = () => {
       width: isTablet ? 100 : 80,
       render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
     },
-    {
-      key: 'created_at',
-      title: 'Registo',
-      sortable: true,
-      width: isTablet ? 120 : 90,
-      render: (contract: Contract, date: string) => new Date(date).toLocaleDateString('pt-PT'),
-    },
+
     {
       key: 'actions',
       title: 'Ações',
@@ -597,6 +604,15 @@ const styles = StyleSheet.create({
   },
   inactiveBadge: {
     backgroundColor: '#FEE2E2',
+  },
+  renegotiatedBadge: {
+    backgroundColor: '#FEF3C7',
+  },
+  cancelledBadge: {
+    backgroundColor: '#FEE2E2',
+  },
+  legalBadge: {
+    backgroundColor: '#EDE9FE',
   },
   statusText: {
     fontSize: 12,

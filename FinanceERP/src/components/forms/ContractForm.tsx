@@ -49,6 +49,15 @@ const ContractForm: React.FC<ContractFormProps> = ({
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
+  // Opções de status para contratos
+  const statusOptions = [
+    { value: 'ativo', label: 'Ativo' },
+    { value: 'liquidado', label: 'Liquidado' },
+    { value: 'renegociado', label: 'Renegociado' },
+    { value: 'cancelado', label: 'Cancelado' },
+    { value: 'jurídico', label: 'Jurídico' },
+  ];
+
   useEffect(() => {
     if (visible) {
       loadClients();
@@ -331,6 +340,33 @@ const ContractForm: React.FC<ContractFormProps> = ({
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Status</Text>
+              
+              <Text style={styles.inputLabel}>Status do Contrato</Text>
+              <View style={styles.statusContainer}>
+                {statusOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.statusOption,
+                      formData.status === option.value && styles.statusOptionSelected,
+                    ]}
+                    onPress={() => updateField('status', option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusOptionText,
+                        formData.status === option.value && styles.statusOptionTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>Informações Adicionais</Text>
               
               <Input
@@ -488,6 +524,32 @@ const styles = StyleSheet.create({
   clientEmail: {
     fontSize: 14,
     color: '#64748B',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  statusOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+  statusOptionSelected: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  statusOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  statusOptionTextSelected: {
+    color: '#FFFFFF',
   },
 });
 
