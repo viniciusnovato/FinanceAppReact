@@ -374,6 +374,37 @@ const PaymentsScreen: React.FC = () => {
     }
   };
 
+  const handleTogglePaymentStatus = async (payment: Payment) => {
+    try {
+      const newStatus = payment.status === 'paid' ? 'pending' : 'paid';
+      const updateData = { 
+        status: newStatus, 
+        paid_date: newStatus === 'paid' ? new Date().toISOString() : undefined 
+      };
+      
+      // Call the API to update the payment
+      const response = await ApiService.updatePayment(payment.id, updateData);
+      
+      if (response.success && response.data) {
+        // Update local state with the response from the API
+        const updatedPayments = payments.map(p => 
+          p.id === payment.id ? response.data : p
+        );
+        setPayments(updatedPayments);
+        
+        const message = newStatus === 'paid' 
+          ? 'Pagamento marcado como pago' 
+          : 'Pagamento marcado como pendente';
+        Alert.alert('Sucesso', message);
+      } else {
+        throw new Error('Failed to update payment');
+      }
+    } catch (error) {
+      console.error('Error toggling payment status:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o pagamento');
+    }
+  };
+
   const renderStatusBadge = (payment: Payment, status: string) => (
     <View style={[
       styles.statusBadge,
@@ -437,11 +468,41 @@ const PaymentsScreen: React.FC = () => {
       render: (payment: Payment) => new Date(payment.due_date || '').toLocaleDateString('pt-PT'),
     },
     {
+      key: 'installment',
+      title: 'Nº Parcela',
+      width: 90,
+      sortable: false,
+      render: (payment: Payment) => payment.notes || 'N/A',
+    },
+    {
       key: 'status',
       title: 'Status',
       width: 100,
       sortable: true,
       render: renderStatusBadge,
+    },
+    {
+      key: 'paid',
+      title: 'Pago',
+      width: 80,
+      sortable: false,
+      render: (payment: Payment) => (
+        <TouchableOpacity
+          style={styles.checkboxContainer}
+          onPress={() => handleTogglePaymentStatus(payment)}
+          disabled={payment.status === 'failed'}
+        >
+          <View style={[
+            styles.checkbox,
+            payment.status === 'paid' && styles.checkboxChecked,
+            payment.status === 'failed' && styles.checkboxDisabled
+          ]}>
+            {payment.status === 'paid' && (
+              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+            )}
+          </View>
+        </TouchableOpacity>
+      ),
     },
     {
       key: 'payment_method',
@@ -742,6 +803,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     paddingHorizontal: 4,
+  },
+  checkboxContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  checkboxDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
   },
 });
 
