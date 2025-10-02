@@ -367,26 +367,23 @@ const ClientsScreen: React.FC = () => {
       key: 'first_name',
       title: 'Nome',
       sortable: true,
-      width: isTablet ? 150 : 100,
     },
     {
       key: 'last_name',
       title: 'Sobrenome',
       sortable: true,
-      width: isTablet ? 150 : 100,
     },
     {
       key: 'email',
       title: 'Email',
       sortable: true,
-      width: isTablet ? 200 : 120,
     },
 
     {
       key: 'status',
       title: 'Status',
       sortable: true,
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 80 : 60,
       render: (client: Client, status: string) => renderStatusBadge(status),
     },
 
@@ -394,7 +391,7 @@ const ClientsScreen: React.FC = () => {
       key: 'actions',
       title: 'Ações',
       sortable: false,
-      width: isTablet ? 120 : 100,
+      width: isTablet ? 100 : 80,
       render: (client: Client) => (
         <View style={styles.actionsContainer}>
           <TouchableOpacity
@@ -579,13 +576,14 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   actionButton: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',

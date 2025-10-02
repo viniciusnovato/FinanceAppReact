@@ -440,14 +440,13 @@ const PaymentsScreen: React.FC = () => {
     {
       key: 'contract',
       title: 'Contrato',
-      width: 120,
+      width: isTablet ? 90 : 70,
       sortable: false,
       render: (payment: Payment) => payment.contract?.contract_number || 'N/A',
     },
     {
       key: 'client',
       title: 'Cliente',
-      width: 140,
       sortable: false,
       render: (payment: Payment) => 
         payment.contract?.client ? 
@@ -456,35 +455,35 @@ const PaymentsScreen: React.FC = () => {
     {
       key: 'amount',
       title: 'Valor',
-      width: 120,
+      width: isTablet ? 90 : 70,
       sortable: true,
       render: (payment: Payment) => formatCurrency(payment.amount || 0),
     },
     {
       key: 'due_date',
       title: 'Vencimento',
-      width: 120,
+      width: isTablet ? 100 : 80,
       sortable: true,
       render: (payment: Payment) => new Date(payment.due_date || '').toLocaleDateString('pt-PT'),
     },
     {
       key: 'installment',
       title: 'Nº Parcela',
-      width: 90,
+      width: isTablet ? 80 : 60,
       sortable: false,
       render: (payment: Payment) => payment.notes || 'N/A',
     },
     {
       key: 'status',
       title: 'Status',
-      width: 100,
+      width: isTablet ? 100 : 80,
       sortable: true,
       render: renderStatusBadge,
     },
     {
       key: 'paid',
       title: 'Pago',
-      width: 80,
+      width: isTablet ? 60 : 50,
       sortable: false,
       render: (payment: Payment) => (
         <TouchableOpacity
@@ -495,7 +494,7 @@ const PaymentsScreen: React.FC = () => {
           <View style={[
             styles.checkbox,
             payment.status === 'paid' && styles.checkboxChecked,
-            payment.status === 'failed' && styles.checkboxDisabled
+            payment.status === 'failed' && styles.checkboxDisabled,
           ]}>
             {payment.status === 'paid' && (
               <Ionicons name="checkmark" size={16} color="#FFFFFF" />
@@ -507,20 +506,15 @@ const PaymentsScreen: React.FC = () => {
     {
       key: 'payment_method',
       title: 'Método',
-      width: 120,
+      width: isTablet ? 80 : 60,
       sortable: false,
-      render: (payment: Payment) => {
-        const method = payment.payment_method;
-        return method === 'bank_transfer' ? 'Transferência' :
-               method === 'pix' ? 'PIX' :
-               method === 'credit_card' ? 'Cartão' : method || 'N/A';
-      },
+      render: (payment: Payment) => payment.payment_method || 'N/A',
     },
     {
       key: 'actions',
       title: 'Ações',
+      width: isTablet ? 100 : 80,
       sortable: false,
-      width: 120,
       render: (payment: Payment) => (
         <View style={styles.actionsContainer}>
           <TouchableOpacity
@@ -732,13 +726,14 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   actionButton: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',

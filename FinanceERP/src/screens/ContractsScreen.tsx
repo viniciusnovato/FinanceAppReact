@@ -355,19 +355,17 @@ const ContractsScreen: React.FC = () => {
       key: 'contract_number',
       title: 'Número',
       sortable: true,
-      width: isTablet ? 120 : 80,
+      width: isTablet ? 100 : 70,
     },
     {
       key: 'description',
       title: 'Descrição',
       sortable: true,
-      width: isTablet ? 200 : 120,
     },
     {
       key: 'client_name',
       title: 'Cliente',
       sortable: true,
-      width: isTablet ? 180 : 100,
       render: (contract: Contract) => {
         if (contract.client) {
           const firstName = contract.client.first_name || '';
@@ -381,21 +379,21 @@ const ContractsScreen: React.FC = () => {
       key: 'value',
       title: 'Valor',
       sortable: true,
-      width: isTablet ? 120 : 80,
+      width: isTablet ? 100 : 70,
       render: (contract: Contract, value: number) => formatCurrency(value as number),
     },
     {
       key: 'number_of_payments',
       title: 'Nº Parcelas',
       sortable: true,
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 80 : 60,
       render: (contract: Contract, numberOfPayments: number) => numberOfPayments ? numberOfPayments.toString() : 'N/A',
     },
     {
       key: 'status',
       title: 'Status',
       sortable: true,
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 90 : 70,
       render: (contract: Contract, status: string) => {
         const getStatusStyle = (status: string) => {
           switch (status) {
@@ -429,14 +427,14 @@ const ContractsScreen: React.FC = () => {
       key: 'start_date',
       title: 'Início',
       sortable: true,
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 80 : 60,
       render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
     },
     {
       key: 'end_date',
       title: 'Fim',
       sortable: true,
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 80 : 60,
       render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
     },
 
@@ -444,7 +442,7 @@ const ContractsScreen: React.FC = () => {
       key: 'actions',
       title: 'Ações',
       sortable: false,
-      width: isTablet ? 180 : 160,
+      width: isTablet ? 140 : 120,
       render: (contract: Contract) => (
         <View style={styles.actionsContainer}>
           <TouchableOpacity
@@ -676,13 +674,14 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   actionButton: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',

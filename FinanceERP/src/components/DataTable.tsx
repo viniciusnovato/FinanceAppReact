@@ -55,13 +55,14 @@ const DataTable: React.FC<DataTableProps> = ({
           key={column.key}
           style={[
             styles.headerCell,
-            { width: column.width || 100 },
-            column.sortable && styles.sortableHeader,
+            column.width 
+              ? { width: column.width, flexShrink: 0 }
+              : { flex: 1, minWidth: 80 }
           ]}
           onPress={() => handleSort(column)}
           disabled={!column.sortable}
         >
-          <Text style={styles.headerText}>{column.title}</Text>
+          <Text style={styles.headerText} numberOfLines={1}>{column.title}</Text>
           {column.sortable && sortColumn === column.key && (
             <Ionicons
               name={sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'}
@@ -107,7 +108,9 @@ const DataTable: React.FC<DataTableProps> = ({
             key={column.key}
             style={[
               styles.dataCell,
-              { width: column.width || 100 },
+              column.width 
+                ? { width: column.width, flexShrink: 0 }
+                : { flex: 1, minWidth: 80 }
             ]}
           >
             {React.isValidElement(renderableContent) ? (
@@ -170,12 +173,15 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     paddingVertical: 16,
     paddingHorizontal: 16,
+    minHeight: 56,
   },
   headerCell: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginRight: 16,
+    justifyContent: 'center',
+    marginRight: 4,
+    paddingHorizontal: 4,
+    overflow: 'hidden',
   },
   sortableHeader: {
     // Adiciona visual feedback para colunas ordenáveis
@@ -199,6 +205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    minHeight: 56,
   },
   evenRow: {
     backgroundColor: '#FFFFFF',
@@ -207,13 +214,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   dataCell: {
-    marginRight: 16,
+    marginRight: 4,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
   },
   cellText: {
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
