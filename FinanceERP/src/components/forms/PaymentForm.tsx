@@ -207,6 +207,23 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     { value: 'downPayment', label: 'Entrada' },
   ];
 
+  const paymentMethodOptions = [
+    { value: 'DD', label: 'DD' },
+    { value: 'TRF', label: 'Transferência' },
+    { value: 'Stripe', label: 'Stripe' },
+    { value: 'PP', label: 'PP' },
+    { value: 'Receção', label: 'Receção' },
+    { value: 'TRF ou RECEÇÃO', label: 'TRF ou Receção' },
+    { value: 'TRF - OP', label: 'TRF - OP' },
+    { value: 'bank_transfer', label: 'Transferência Bancária' },
+    { value: 'Cheque', label: 'Cheque' },
+    { value: 'Cheque/Misto', label: 'Cheque/Misto' },
+    { value: 'Aditamento', label: 'Aditamento' },
+    { value: 'DD + TB', label: 'DD + TB' },
+    { value: 'Ordenado', label: 'Ordenado' },
+    { value: 'Numerário', label: 'Numerário' },
+  ];
+
   return (
     <Modal
       visible={visible}
@@ -304,12 +321,28 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 </View>
               </View>
 
-              <Input
-                label="Método de Pagamento"
-                value={formData.payment_method}
-                onChangeText={(value) => updateField('payment_method', value)}
-                placeholder="Ex: Cartão, PIX, Boleto, etc."
-              />
+              <View>
+                <Text style={styles.inputLabel}>Método de Pagamento</Text>
+                <View style={styles.statusContainer}>
+                  {paymentMethodOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.statusOption,
+                        formData.payment_method === option.value && styles.statusOptionSelected
+                      ]}
+                      onPress={() => updateField('payment_method', option.value)}
+                    >
+                      <Text style={[
+                        styles.statusOptionText,
+                        formData.payment_method === option.value && styles.statusOptionTextSelected
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
               <View>
                 <Text style={styles.inputLabel}>Tipo de Pagamento</Text>
