@@ -93,6 +93,11 @@ export class PaymentRepository {
       } = filters;
       const offset = (page - 1) * limit;
 
+      // Se há filtro de nome do cliente, usar uma abordagem especial
+      if (client_name) {
+        return this.findAllPaginatedWithClientNameFilter(options, filters);
+      }
+
       // Construir query base com joins para permitir filtros cruzados
       let countQuery = supabase
         .from('payments')
@@ -190,12 +195,6 @@ export class PaymentRepository {
       }
 
       // Filtros de cliente
-      if (client_name) {
-        const nameFilter = `contracts.clients.first_name.ilike.%${client_name}%,contracts.clients.last_name.ilike.%${client_name}%`;
-        countQuery = countQuery.or(nameFilter);
-        dataQuery = dataQuery.or(nameFilter);
-      }
-
       if (client_email) {
         countQuery = countQuery.ilike('contracts.clients.email', `%${client_email}%`);
         dataQuery = dataQuery.ilike('contracts.clients.email', `%${client_email}%`);
@@ -384,6 +383,130 @@ export class PaymentRepository {
     } catch (error) {
       console.error('Error fetching paginated payments:', error);
       throw new Error('Failed to fetch paginated payments');
+    }
+  }
+
+  // Método especial para lidar com filtro de nome do cliente
+  async findAllPaginatedWithClientNameFilter(options: PaginationOptions = {}, filters: PaymentFilters = {}): Promise<PaginatedResult<Payment>> {
+    try {
+      const { page = 1, limit = 50 } = options;
+      const { client_name } = filters;
+      const offset = (page - 1) * limit;
+
+      if (!client_name) {
+        return this.findAllPaginated(options, { ...filters, client_name: undefined });
+      }
+
+      const searchTerm = `%${client_name}%`;
+
+      // Query para buscar por first_name
+      const firstNameQuery = supabase
+        .from('payments')
+        .select(`
+          *,
+          contract:contracts!inner(
+            *,
+            client:clients!inner(*)
+          )
+        `)
+        .ilike('contracts.clients.first_name', searchTerm)
+        .order('created_at', { ascending: false });
+
+      // Query para buscar por last_name
+      const lastNameQuery = supabase
+        .from('payments')
+        .select(`
+          *,
+          contract:contracts!inner(
+            *,
+            client:clients!inner(*)
+          )
+        `)
+        .ilike('contracts.clients.last_name', searchTerm)
+        .order('created_at', { ascending: false });
+
+      // Aplicar outros filtros em ambas as queries
+      const applyOtherFilters = (query: any) => {
+        const {
+          status,
+          contractId,
+          due_date_from,
+          due_date_to,
+          paid_date_from,
+          paid_date_to,
+          created_at_from,
+          created_at_to,
+          amount_min,
+          amount_max,
+          payment_method,
+          payment_type,
+          contract_number,
+          contract_status,
+          client_email,
+          client_phone,
+          tax_id
+        } = filters;
+
+        if (status) query = query.eq('status', status);
+        if (contractId) query = query.eq('contract_id', contractId);
+        if (due_date_from) query = query.gte('due_date', due_date_from);
+        if (due_date_to) query = query.lte('due_date', due_date_to);
+        if (paid_date_from) query = query.gte('paid_date', paid_date_from);
+        if (paid_date_to) query = query.lte('paid_date', paid_date_to);
+        if (created_at_from) query = query.gte('created_at', created_at_from);
+        if (created_at_to) query = query.lte('created_at', created_at_to);
+        if (amount_min !== undefined) query = query.gte('amount', amount_min);
+        if (amount_max !== undefined) query = query.lte('amount', amount_max);
+        if (payment_method) query = query.eq('payment_method', payment_method);
+        if (payment_type) query = query.eq('payment_type', payment_type);
+        if (contract_number) query = query.eq('contracts.contract_number', contract_number);
+        if (contract_status) query = query.eq('contracts.status', contract_status);
+        if (client_email) query = query.ilike('contracts.clients.email', `%${client_email}%`);
+        if (client_phone) query = query.ilike('contracts.clients.phone', `%${client_phone}%`);
+        if (tax_id) query = query.eq('contracts.clients.tax_id', tax_id);
+
+        return query;
+      };
+
+      // Aplicar filtros adicionais
+      const firstNameQueryFiltered = applyOtherFilters(firstNameQuery);
+      const lastNameQueryFiltered = applyOtherFilters(lastNameQuery);
+
+      // Executar ambas as queries
+      const [firstNameResult, lastNameResult] = await Promise.all([
+        firstNameQueryFiltered,
+        lastNameQueryFiltered
+      ]);
+
+      if (firstNameResult.error) throw firstNameResult.error;
+      if (lastNameResult.error) throw lastNameResult.error;
+
+      // Combinar resultados e remover duplicatas
+      const allResults = [...(firstNameResult.data || []), ...(lastNameResult.data || [])];
+      const uniqueResults = allResults.filter((payment, index, self) => 
+        index === self.findIndex(p => p.id === payment.id)
+      );
+
+      // Ordenar por data de criação
+      uniqueResults.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // Aplicar paginação manual
+      const total = uniqueResults.length;
+      const paginatedData = uniqueResults.slice(offset, offset + limit);
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: paginatedData,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      };
+    } catch (error) {
+      console.error('Error fetching paginated payments with client name filter:', error);
+      throw new Error('Failed to fetch paginated payments with client name filter');
     }
   }
 
