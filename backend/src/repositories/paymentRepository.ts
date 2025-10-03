@@ -11,6 +11,27 @@ export interface PaymentFilters {
   status?: string;
   search?: string;
   contractId?: string;
+  // Date filters
+  due_date_from?: string;
+  due_date_to?: string;
+  paid_date_from?: string;
+  paid_date_to?: string;
+  created_at_from?: string;
+  created_at_to?: string;
+  // Amount filters
+  amount_min?: number;
+  amount_max?: number;
+  // Payment method and type
+  payment_method?: string;
+  payment_type?: string;
+  // Contract filters
+  contract_number?: string;
+  contract_status?: string;
+  // Client filters
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  tax_id?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -49,22 +70,51 @@ export class PaymentRepository {
   async findAllPaginated(options: PaginationOptions = {}, filters: PaymentFilters = {}): Promise<PaginatedResult<Payment>> {
     try {
       const { page = 1, limit = 50 } = options;
-      const { status, search, contractId } = filters;
+      const { 
+        status, 
+        search, 
+        contractId,
+        due_date_from,
+        due_date_to,
+        paid_date_from,
+        paid_date_to,
+        created_at_from,
+        created_at_to,
+        amount_min,
+        amount_max,
+        payment_method,
+        payment_type,
+        contract_number,
+        contract_status,
+        client_name,
+        client_email,
+        client_phone,
+        tax_id
+      } = filters;
       const offset = (page - 1) * limit;
 
-      // Construir query base
-      let countQuery = supabase.from('payments').select('*', { count: 'exact', head: true });
+      // Construir query base com joins para permitir filtros cruzados
+      let countQuery = supabase
+        .from('payments')
+        .select(`
+          *,
+          contract:contracts!inner(
+            *,
+            client:clients!inner(*)
+          )
+        `, { count: 'exact', head: true });
+      
       let dataQuery = supabase
         .from('payments')
         .select(`
           *,
-          contract:contracts(
+          contract:contracts!inner(
             *,
-            client:clients(*)
+            client:clients!inner(*)
           )
         `);
 
-      // Aplicar filtros
+      // Aplicar filtros de pagamento
       if (status) {
         countQuery = countQuery.eq('status', status);
         dataQuery = dataQuery.eq('status', status);
@@ -75,9 +125,95 @@ export class PaymentRepository {
         dataQuery = dataQuery.eq('contract_id', contractId);
       }
 
+      // Filtros de data
+      if (due_date_from) {
+        countQuery = countQuery.gte('due_date', due_date_from);
+        dataQuery = dataQuery.gte('due_date', due_date_from);
+      }
+
+      if (due_date_to) {
+        countQuery = countQuery.lte('due_date', due_date_to);
+        dataQuery = dataQuery.lte('due_date', due_date_to);
+      }
+
+      if (paid_date_from) {
+        countQuery = countQuery.gte('paid_date', paid_date_from);
+        dataQuery = dataQuery.gte('paid_date', paid_date_from);
+      }
+
+      if (paid_date_to) {
+        countQuery = countQuery.lte('paid_date', paid_date_to);
+        dataQuery = dataQuery.lte('paid_date', paid_date_to);
+      }
+
+      if (created_at_from) {
+        countQuery = countQuery.gte('created_at', created_at_from);
+        dataQuery = dataQuery.gte('created_at', created_at_from);
+      }
+
+      if (created_at_to) {
+        countQuery = countQuery.lte('created_at', created_at_to);
+        dataQuery = dataQuery.lte('created_at', created_at_to);
+      }
+
+      // Filtros de valor
+      if (amount_min !== undefined) {
+        countQuery = countQuery.gte('amount', amount_min);
+        dataQuery = dataQuery.gte('amount', amount_min);
+      }
+
+      if (amount_max !== undefined) {
+        countQuery = countQuery.lte('amount', amount_max);
+        dataQuery = dataQuery.lte('amount', amount_max);
+      }
+
+      // Filtros de método e tipo de pagamento
+      if (payment_method) {
+        countQuery = countQuery.eq('payment_method', payment_method);
+        dataQuery = dataQuery.eq('payment_method', payment_method);
+      }
+
+      if (payment_type) {
+        countQuery = countQuery.eq('payment_type', payment_type);
+        dataQuery = dataQuery.eq('payment_type', payment_type);
+      }
+
+      // Filtros de contrato
+      if (contract_number) {
+        countQuery = countQuery.eq('contracts.contract_number', contract_number);
+        dataQuery = dataQuery.eq('contracts.contract_number', contract_number);
+      }
+
+      if (contract_status) {
+        countQuery = countQuery.eq('contracts.status', contract_status);
+        dataQuery = dataQuery.eq('contracts.status', contract_status);
+      }
+
+      // Filtros de cliente
+      if (client_name) {
+        const nameFilter = `contracts.clients.first_name.ilike.%${client_name}%,contracts.clients.last_name.ilike.%${client_name}%`;
+        countQuery = countQuery.or(nameFilter);
+        dataQuery = dataQuery.or(nameFilter);
+      }
+
+      if (client_email) {
+        countQuery = countQuery.ilike('contracts.clients.email', `%${client_email}%`);
+        dataQuery = dataQuery.ilike('contracts.clients.email', `%${client_email}%`);
+      }
+
+      if (client_phone) {
+        countQuery = countQuery.ilike('contracts.clients.phone', `%${client_phone}%`);
+        dataQuery = dataQuery.ilike('contracts.clients.phone', `%${client_phone}%`);
+      }
+
+      if (tax_id) {
+        countQuery = countQuery.eq('contracts.clients.tax_id', tax_id);
+        dataQuery = dataQuery.eq('contracts.clients.tax_id', tax_id);
+      }
+
+      // Busca geral (mantendo compatibilidade)
       if (search) {
-        // Buscar por descrição ou valor
-        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0}`;
+        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0},contracts.contract_number.ilike.%${search}%,contracts.clients.first_name.ilike.%${search}%,contracts.clients.last_name.ilike.%${search}%`;
         countQuery = countQuery.or(searchFilter);
         dataQuery = dataQuery.or(searchFilter);
       }

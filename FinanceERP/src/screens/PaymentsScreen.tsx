@@ -17,8 +17,11 @@ import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
+import { formatDate } from '../utils/dateUtils';
 import PaymentForm from '../components/forms/PaymentForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import AdvancedFilters from '../components/filters/AdvancedFilters';
+import FilterChips from '../components/filters/FilterChips';
 import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -63,15 +66,19 @@ const PaymentsScreen: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
 
+  // Advanced filters state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<any>({});
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, contractId]);
+  }, [activeFilter, searchQuery, contractId, advancedFilters]);
 
   // Load payments when page or filters change
   useEffect(() => {
     loadPayments();
-  }, [currentPage, activeFilter, searchQuery, contractId]);
+  }, [currentPage, activeFilter, searchQuery, contractId, advancedFilters]);
 
   const loadPayments = async () => {
     try {
@@ -87,6 +94,30 @@ const PaymentsScreen: React.FC = () => {
       if (searchQuery.trim()) {
         filters.search = searchQuery.trim();
       }
+
+      // Merge advanced filters with field name mapping
+      Object.keys(advancedFilters).forEach(key => {
+        if (advancedFilters[key] !== undefined && advancedFilters[key] !== '') {
+          // Map frontend field names to backend field names
+          if (key === 'amount_from') {
+            const numericValue = parseFloat(advancedFilters[key].replace(',', '.'));
+            if (!isNaN(numericValue)) {
+              filters.amount_min = numericValue;
+              console.log('🔍 Setting amount_min filter:', numericValue);
+            }
+          } else if (key === 'amount_to') {
+            const numericValue = parseFloat(advancedFilters[key].replace(',', '.'));
+            if (!isNaN(numericValue)) {
+              filters.amount_max = numericValue;
+              console.log('🔍 Setting amount_max filter:', numericValue);
+            }
+          } else {
+            filters[key] = advancedFilters[key];
+          }
+        }
+      });
+
+      console.log('🔍 Final filters being sent to API:', filters);
       
       if (contractId) {
         // Load payments for specific contract using pagination
@@ -341,6 +372,18 @@ const PaymentsScreen: React.FC = () => {
     }
   };
 
+  const handleRemoveFilter = (key: keyof typeof advancedFilters) => {
+    setAdvancedFilters((prev: any) => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+  };
+
+  const handleClearAllFilters = () => {
+    setAdvancedFilters({});
+  };
+
   const handleClosePaymentForm = () => {
     setShowPaymentForm(false);
     setEditingPayment(null);
@@ -464,7 +507,7 @@ const PaymentsScreen: React.FC = () => {
       title: 'Vencimento',
       width: isTablet ? 100 : 80,
       sortable: true,
-      render: (payment: Payment) => new Date(payment.due_date || '').toLocaleDateString('pt-PT'),
+      render: (payment: Payment) => formatDate(payment.due_date),
     },
     {
       key: 'installment',
@@ -567,32 +610,63 @@ const PaymentsScreen: React.FC = () => {
           </View>
 
           <View style={styles.filtersContainer}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filtersContent}
-            >
-              {filters.map((filter) => (
-                <TouchableOpacity
-                  key={filter.key}
-                  style={[
-                    styles.filterButton,
-                    activeFilter === filter.key && styles.activeFilterButton,
-                  ]}
-                  onPress={() => setActiveFilter(filter.key)}
-                >
-                  <Text
+            <View style={styles.filtersRow}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filtersContent}
+                style={styles.basicFilters}
+              >
+                {filters.map((filter) => (
+                  <TouchableOpacity
+                    key={filter.key}
                     style={[
-                      styles.filterButtonText,
-                      activeFilter === filter.key && styles.activeFilterButtonText,
+                      styles.filterButton,
+                      activeFilter === filter.key && styles.activeFilterButton,
                     ]}
+                    onPress={() => setActiveFilter(filter.key)}
                   >
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        activeFilter === filter.key && styles.activeFilterButtonText,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              
+              <TouchableOpacity
+                style={[styles.advancedFilterButton, showAdvancedFilters && styles.advancedFilterButtonActive]}
+                onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              >
+                <Ionicons 
+                  name="options" 
+                  size={16} 
+                  color={showAdvancedFilters ? '#FFFFFF' : '#64748B'} 
+                />
+                <Text style={[styles.advancedFilterText, showAdvancedFilters && styles.advancedFilterTextActive]}>
+                  Filtros
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          <FilterChips
+            filters={advancedFilters}
+            onRemoveFilter={handleRemoveFilter}
+            onClearAll={handleClearAllFilters}
+          />
+
+          <AdvancedFilters
+            visible={showAdvancedFilters}
+            onClose={() => setShowAdvancedFilters(false)}
+            onApplyFilters={setAdvancedFilters}
+            onClearFilters={() => setAdvancedFilters({})}
+            initialFilters={advancedFilters}
+          />
 
           <DataTable
             data={payments}
@@ -671,8 +745,45 @@ const styles = StyleSheet.create({
   filtersContainer: {
     marginBottom: 20,
   },
+  filtersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  basicFilters: {
+    flex: 1,
+    marginRight: 12,
+  },
   filtersContent: {
     paddingRight: 16,
+  },
+  advancedFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    gap: 6,
+  },
+  advancedFilterButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  advancedFilterText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  advancedFilterTextActive: {
+    color: '#FFFFFF',
   },
   filterButton: {
     paddingHorizontal: 16,

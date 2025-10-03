@@ -18,6 +18,7 @@ import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
+import { formatDate } from '../utils/dateUtils';
 import ContractForm from '../components/forms/ContractForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ContractDetailsModal } from '../components/ContractDetailsModal';
@@ -428,14 +429,14 @@ const ContractsScreen: React.FC = () => {
       title: 'Início',
       sortable: true,
       width: isTablet ? 80 : 60,
-      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
+      render: (contract: Contract, date: string) => formatDate(date as string),
     },
     {
       key: 'end_date',
       title: 'Fim',
       sortable: true,
       width: isTablet ? 80 : 60,
-      render: (contract: Contract, date: string) => new Date(date as string).toLocaleDateString('pt-PT'),
+      render: (contract: Contract, date: string) => formatDate(date as string),
     },
 
     {

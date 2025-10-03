@@ -7,13 +7,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Client } from '../../types';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import DatePicker from '../common/DatePicker';
-import Yup from 'yup';
+import { Client } from '../../types';
+import { validateNIF } from '../../utils/nifValidation';
 
 interface ClientFormProps {
   visible: boolean;
@@ -103,6 +104,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
     if (formData.mobile && !/^\+?[\d\s\-\(\)]+$/.test(formData.mobile)) {
       newErrors.mobile = 'Telemóvel inválido';
+    }
+
+    // Validação específica para NIF português
+    if (formData.tax_id && !validateNIF(formData.tax_id)) {
+      newErrors.tax_id = 'NIF inválido';
     }
 
     setErrors(newErrors);

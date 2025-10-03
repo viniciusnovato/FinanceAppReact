@@ -138,11 +138,7 @@ class ApiService {
   async getPaymentsPaginated(
     page: number = 1, 
     limit: number = 10, 
-    filters?: {
-      status?: string;
-      search?: string;
-      contractId?: string;
-    }
+    filters?: Record<string, any>
   ): Promise<ApiResponse<{
     data: Payment[];
     total: number;
@@ -155,11 +151,14 @@ class ApiService {
     let url = `/payments/paginated?page=${page}&limit=${limit}`;
     
     if (filters) {
-      if (filters.status) url += `&status=${encodeURIComponent(filters.status)}`;
-      if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
-      if (filters.contractId) url += `&contractId=${encodeURIComponent(filters.contractId)}`;
+      Object.keys(filters).forEach(key => {
+        if (filters[key] !== undefined && filters[key] !== '') {
+          url += `&${key}=${encodeURIComponent(filters[key])}`;
+        }
+      });
     }
     
+    console.log('🌐 Final API URL:', url);
     return this.request(url);
   }
 

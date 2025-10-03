@@ -31,12 +31,34 @@ export class PaymentController {
       const filters = {
         status: req.query.status as string,
         search: req.query.search as string,
-        contractId: req.query.contractId as string
+        contractId: req.query.contractId as string,
+        // Date filters
+        due_date_from: req.query.due_date_from as string,
+        due_date_to: req.query.due_date_to as string,
+        paid_date_from: req.query.paid_date_from as string,
+        paid_date_to: req.query.paid_date_to as string,
+        created_at_from: req.query.created_at_from as string,
+        created_at_to: req.query.created_at_to as string,
+        // Amount filters
+        amount_min: req.query.amount_min ? parseFloat(req.query.amount_min as string) : undefined,
+        amount_max: req.query.amount_max ? parseFloat(req.query.amount_max as string) : undefined,
+        // Payment method and type
+        payment_method: req.query.payment_method as string,
+        payment_type: req.query.payment_type as string,
+        // Contract filters
+        contract_number: req.query.contract_number as string,
+        contract_status: req.query.contract_status as string,
+        // Client filters
+        client_name: req.query.client_name as string,
+        client_email: req.query.client_email as string,
+        client_phone: req.query.client_phone as string,
+        tax_id: req.query.tax_id as string,
       };
 
       // Remover filtros vazios
       Object.keys(filters).forEach(key => {
-        if (!filters[key as keyof typeof filters]) {
+        const value = filters[key as keyof typeof filters];
+        if (value === undefined || value === null || value === '') {
           delete filters[key as keyof typeof filters];
         }
       });
