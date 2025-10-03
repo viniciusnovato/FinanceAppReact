@@ -213,9 +213,149 @@ export class PaymentRepository {
 
       // Busca geral (mantendo compatibilidade)
       if (search) {
-        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0},contracts.contract_number.ilike.%${search}%,contracts.clients.first_name.ilike.%${search}%,contracts.clients.last_name.ilike.%${search}%`;
-        countQuery = countQuery.or(searchFilter);
-        dataQuery = dataQuery.or(searchFilter);
+        const searchTerm = search.trim();
+        const numericValue = parseFloat(searchTerm);
+        const isNumeric = !isNaN(numericValue) && isFinite(numericValue);
+        
+        // Fazer múltiplas consultas separadas e combinar os resultados
+        const searchPromises = [];
+        
+        // Busca em notas
+         searchPromises.push(
+           supabase
+             .from('payments')
+             .select(`
+               *,
+               contract:contracts!inner(
+                 *,
+                 client:clients!inner(*)
+               )
+             `)
+             .ilike('notes', `%${searchTerm}%`)
+         );
+         
+         // Busca em número do contrato
+         searchPromises.push(
+           supabase
+             .from('payments')
+             .select(`
+               *,
+               contract:contracts!inner(
+                 *,
+                 client:clients!inner(*)
+               )
+             `)
+             .ilike('contracts.contract_number', `%${searchTerm}%`)
+         );
+         
+         // Busca em primeiro nome do cliente
+         searchPromises.push(
+           supabase
+             .from('payments')
+             .select(`
+               *,
+               contract:contracts!inner(
+                 *,
+                 client:clients!inner(*)
+               )
+             `)
+             .ilike('contracts.clients.first_name', `%${searchTerm}%`)
+         );
+         
+         // Busca em último nome do cliente
+         searchPromises.push(
+           supabase
+             .from('payments')
+             .select(`
+               *,
+               contract:contracts!inner(
+                 *,
+                 client:clients!inner(*)
+               )
+             `)
+             .ilike('contracts.clients.last_name', `%${searchTerm}%`)
+         );
+         
+         // Busca por valor se for numérico
+         if (isNumeric && numericValue > 0) {
+           searchPromises.push(
+             supabase
+               .from('payments')
+               .select(`
+                 *,
+                 contract:contracts!inner(
+                   *,
+                   client:clients!inner(*)
+                 )
+               `)
+               .eq('amount', numericValue)
+           );
+         }
+        
+        // Executar todas as buscas
+        const searchResults = await Promise.all(searchPromises);
+        
+        // Combinar resultados únicos
+         const allResults: any[] = [];
+         const seenIds = new Set<string>();
+        
+        searchResults.forEach(({ data, error }) => {
+          if (error) throw error;
+          if (data) {
+            data.forEach(payment => {
+              if (!seenIds.has(payment.id)) {
+                // Aplicar outros filtros
+                let includePayment = true;
+                
+                if (status && payment.status !== status) includePayment = false;
+                if (contractId && payment.contract_id !== contractId) includePayment = false;
+                if (due_date_from && payment.due_date < due_date_from) includePayment = false;
+                if (due_date_to && payment.due_date > due_date_to) includePayment = false;
+                if (paid_date_from && payment.paid_date && payment.paid_date < paid_date_from) includePayment = false;
+                if (paid_date_to && payment.paid_date && payment.paid_date > paid_date_to) includePayment = false;
+                if (created_at_from && payment.created_at < created_at_from) includePayment = false;
+                if (created_at_to && payment.created_at > created_at_to) includePayment = false;
+                if (amount_min !== undefined && payment.amount < amount_min) includePayment = false;
+                if (amount_max !== undefined && payment.amount > amount_max) includePayment = false;
+                if (payment_method && payment.payment_method !== payment_method) includePayment = false;
+                if (payment_type && payment.payment_type !== payment_type) includePayment = false;
+                if (contract_number && payment.contract.contract_number !== contract_number) includePayment = false;
+                if (contract_status && payment.contract.status !== contract_status) includePayment = false;
+                if (client_name && 
+                    !payment.contract.client.first_name.toLowerCase().includes(client_name.toLowerCase()) &&
+                    !payment.contract.client.last_name.toLowerCase().includes(client_name.toLowerCase())) {
+                  includePayment = false;
+                }
+                if (client_email && !payment.contract.client.email.toLowerCase().includes(client_email.toLowerCase())) includePayment = false;
+                if (client_phone && !payment.contract.client.phone.includes(client_phone)) includePayment = false;
+                if (tax_id && payment.contract.client.tax_id !== tax_id) includePayment = false;
+                
+                if (includePayment) {
+                  seenIds.add(payment.id);
+                  allResults.push(payment);
+                }
+              }
+            });
+          }
+        });
+        
+        // Ordenar por data de criação (mais recente primeiro)
+        allResults.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        // Aplicar paginação
+        const total = allResults.length;
+        const totalPages = Math.ceil(total / limit);
+        const paginatedData = allResults.slice(offset, offset + limit);
+        
+        return {
+          data: paginatedData,
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        };
       }
 
       // Executar query de contagem

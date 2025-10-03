@@ -158,7 +158,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
           <View key={payment.id || index} style={styles.paymentItem}>
             <View style={styles.paymentHeader}>
               <Text style={styles.paymentNumber}>
-                {payment.payment_type === 'down_payment' ? 'Entrada' : `Parcela ${payment.installment_number || index + 1}`}
+                {payment.payment_type === 'downPayment' ? 'Entrada' : `Parcela ${payment.installment_number || index + 1}`}
               </Text>
               <View style={[
                 styles.statusBadge,

@@ -528,6 +528,28 @@ const PaymentsScreen: React.FC = () => {
       render: (payment: Payment) => formatDate(payment.created_at),
     },
     {
+      key: 'payment_type',
+      title: 'Tipo',
+      width: isTablet ? 90 : 70,
+      sortable: false,
+      render: (payment: Payment) => {
+        const type = payment.payment_type || 'normalPayment';
+        return (
+          <View style={[
+            styles.typeBadge,
+            type === 'downPayment' ? styles.downPaymentBadge : styles.normalPaymentBadge
+          ]}>
+            <Text style={[
+              styles.typeText,
+              type === 'downPayment' ? styles.downPaymentText : styles.normalPaymentText
+            ]}>
+              {type === 'downPayment' ? 'Entrada' : 'Parcela'}
+            </Text>
+          </View>
+        );
+      },
+    },
+    {
       key: 'installment',
       title: 'Nº Parcela',
       width: isTablet ? 80 : 60,
@@ -950,6 +972,30 @@ const styles = StyleSheet.create({
   checkboxDisabled: {
     backgroundColor: '#F3F4F6',
     borderColor: '#E5E7EB',
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  downPaymentBadge: {
+    backgroundColor: '#E0F2FE',
+  },
+  normalPaymentBadge: {
+    backgroundColor: '#F0F9FF',
+  },
+  typeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  downPaymentText: {
+    color: '#0369A1',
+  },
+  normalPaymentText: {
+    color: '#0284C7',
   },
 });
 

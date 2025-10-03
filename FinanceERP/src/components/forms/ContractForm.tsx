@@ -37,7 +37,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
     value: '',
     start_date: '',
     end_date: '',
-    status: 'ativo',
+    status: 'Ativo',
     payment_frequency: '',
     notes: '',
     down_payment: '',
@@ -51,11 +51,11 @@ const ContractForm: React.FC<ContractFormProps> = ({
 
   // Opções de status para contratos
   const statusOptions = [
-    { value: 'ativo', label: 'Ativo' },
-    { value: 'liquidado', label: 'Liquidado' },
-    { value: 'renegociado', label: 'Renegociado' },
-    { value: 'cancelado', label: 'Cancelado' },
-    { value: 'jurídico', label: 'Jurídico' },
+    { value: 'Ativo', label: 'Ativo' },
+    { value: 'Liquidado', label: 'Liquidado' },
+    { value: 'Renegociado', label: 'Renegociado' },
+    { value: 'Cancelado', label: 'Cancelado' },
+    { value: 'Jurídico', label: 'Jurídico' },
   ];
 
   useEffect(() => {
@@ -73,7 +73,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
         value: contract.value?.toString() || '',
         start_date: contract.start_date || '',
         end_date: contract.end_date || '',
-        status: contract.status || 'ativo',
+        status: contract.status || 'Ativo',
         payment_frequency: contract.payment_frequency || '',
         notes: contract.notes || '',
         down_payment: contract.down_payment?.toString() || '',

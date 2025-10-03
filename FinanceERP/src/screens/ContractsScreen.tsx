@@ -398,14 +398,19 @@ const ContractsScreen: React.FC = () => {
       render: (contract: Contract, status: string) => {
         const getStatusStyle = (status: string) => {
           switch (status) {
+            case 'Ativo':
             case 'ativo':
               return { badge: styles.activeBadge, color: '#16A34A' };
+            case 'Liquidado':
             case 'liquidado':
               return { badge: styles.completedBadge, color: '#2563EB' };
+            case 'Renegociado':
             case 'renegociado':
               return { badge: styles.renegotiatedBadge, color: '#F59E0B' };
+            case 'Cancelado':
             case 'cancelado':
               return { badge: styles.cancelledBadge, color: '#DC2626' };
+            case 'Jurídico':
             case 'jurídico':
               return { badge: styles.legalBadge, color: '#7C3AED' };
             default:
