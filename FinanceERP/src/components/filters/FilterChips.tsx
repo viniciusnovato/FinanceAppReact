@@ -82,10 +82,11 @@ const FilterChips: React.FC<FilterChipsProps> = ({
 
   const getContractStatusLabel = (value: string): string => {
     const statuses: Record<string, string> = {
-      active: 'Ativo',
-      closed: 'Fechado',
-      canceled: 'Cancelado',
-      suspended: 'Suspenso',
+      'Ativo': 'Ativo',
+      'Liquidado': 'Liquidado',
+      'Renegociado': 'Renegociado',
+      'Cancelado': 'Cancelado',
+      'Jurídico': 'Jurídico',
     };
     return statuses[value] || value;
   };
