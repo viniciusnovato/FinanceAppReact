@@ -58,12 +58,18 @@ interface AdvancedFiltersProps {
 
 const paymentMethods = [
   { value: '', label: 'Todos os métodos' },
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'bank_transfer', label: 'Transferência Bancária' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'pix', label: 'PIX' },
-  { value: 'check', label: 'Cheque' },
+  { value: 'DD', label: 'DD' },
+  { value: 'Stripe', label: 'Stripe' },
+  { value: 'Receção', label: 'Receção' },
+  { value: 'TRF', label: 'TRF' },
+  { value: 'PP', label: 'PP' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'Cheque/Misto', label: 'Cheque/Misto' },
+  { value: 'Aditamento', label: 'Aditamento' },
+  { value: 'DD + TB', label: 'DD + TB' },
+  { value: 'TRF ou RECEÇÃO', label: 'TRF ou RECEÇÃO' },
+  { value: 'Ordenado', label: 'Ordenado' },
+  { value: 'Numerário', label: 'Numerário' },
 ];
 
 const paymentTypes = [

@@ -46,12 +46,18 @@ const FilterChips: React.FC<FilterChipsProps> = ({
 
   const getPaymentMethodLabel = (value: string): string => {
     const methods: Record<string, string> = {
-      credit_card: 'Cartão de Crédito',
-      debit_card: 'Cartão de Débito',
-      bank_transfer: 'Transferência Bancária',
-      cash: 'Dinheiro',
-      pix: 'PIX',
-      check: 'Cheque',
+      DD: 'DD',
+      Stripe: 'Stripe',
+      'Receção': 'Receção',
+      TRF: 'TRF',
+      PP: 'PP',
+      Cheque: 'Cheque',
+      'Cheque/Misto': 'Cheque/Misto',
+      Aditamento: 'Aditamento',
+      'DD + TB': 'DD + TB',
+      'TRF ou RECEÇÃO': 'TRF ou RECEÇÃO',
+      Ordenado: 'Ordenado',
+      'Numerário': 'Numerário',
     };
     return methods[value] || value;
   };

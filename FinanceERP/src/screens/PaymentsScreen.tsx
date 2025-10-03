@@ -18,6 +18,7 @@ import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import { formatCurrency } from '../utils/currency';
 import { formatDate } from '../utils/dateUtils';
+import { convertDateFiltersToApiFormat } from '../utils/dateFormatUtils';
 import PaymentForm from '../components/forms/PaymentForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import AdvancedFilters from '../components/filters/AdvancedFilters';
@@ -117,7 +118,10 @@ const PaymentsScreen: React.FC = () => {
         }
       });
 
-      console.log('🔍 Final filters being sent to API:', filters);
+      // Convert date filters to API format (DD/MM/YYYY → YYYY-MM-DD)
+      const filtersWithConvertedDates = convertDateFiltersToApiFormat(filters);
+
+      console.log('🔍 Final filters being sent to API:', filtersWithConvertedDates);
       
       if (contractId) {
         // Load payments for specific contract using pagination
@@ -127,7 +131,7 @@ const PaymentsScreen: React.FC = () => {
           contractId, 
           currentPage, 
           ITEMS_PER_PAGE,
-          filters
+          filtersWithConvertedDates
         );
         
         if (response.success && response.data) {
@@ -150,13 +154,13 @@ const PaymentsScreen: React.FC = () => {
         
         // Add contractId filter if needed
         if (contractId) {
-          filters.contractId = contractId;
+          filtersWithConvertedDates.contractId = contractId;
         }
         
         const response = await ApiService.getPaymentsPaginated(
           currentPage, 
           ITEMS_PER_PAGE, 
-          filters
+          filtersWithConvertedDates
         );
         
         if (response.success && response.data) {
@@ -508,6 +512,20 @@ const PaymentsScreen: React.FC = () => {
       width: isTablet ? 100 : 80,
       sortable: true,
       render: (payment: Payment) => formatDate(payment.due_date),
+    },
+    {
+      key: 'paid_date',
+      title: 'Data Pagamento',
+      width: isTablet ? 110 : 90,
+      sortable: true,
+      render: (payment: Payment) => payment.paid_date ? formatDate(payment.paid_date) : '-',
+    },
+    {
+      key: 'created_at',
+      title: 'Data Criação',
+      width: isTablet ? 110 : 90,
+      sortable: true,
+      render: (payment: Payment) => formatDate(payment.created_at),
     },
     {
       key: 'installment',
