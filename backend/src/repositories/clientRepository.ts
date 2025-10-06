@@ -103,11 +103,114 @@ export class ClientRepository {
     hasDueTodayPayments?: boolean;
   }): Promise<Client[]> {
     try {
-      // Se nenhum filtro especial está ativo, usar query simples
-      if (!filters.hasOverduePayments && !filters.hasDueTodayPayments) {
-        let query = supabase
-          .from('clients')
-          .select('*');
+      const today = new Date().toISOString().split('T')[0];
+      let clientIds: string[] = [];
+
+      // Se há filtros de pagamento, buscar IDs dos clientes primeiro
+      if (filters.hasOverduePayments || filters.hasDueTodayPayments) {
+        if (filters.hasOverduePayments) {
+          // Buscar pagamentos atrasados (não pagos e due_date < hoje)
+          const { data: overduePayments } = await supabase
+            .from('payments')
+            .select('contract_id')
+            .neq('status', 'paid')
+            .lt('due_date', today);
+
+          if (overduePayments && overduePayments.length > 0) {
+            const contractIds = Array.from(new Set(overduePayments.map(p => p.contract_id)));
+            
+            // Processar em lotes para evitar erro de fetch
+            const batchSize = 100;
+            const batches = [];
+            for (let i = 0; i < contractIds.length; i += batchSize) {
+              batches.push(contractIds.slice(i, i + batchSize));
+            }
+
+            for (const batch of batches) {
+              // Buscar client_ids desses contratos
+              const { data: contracts } = await supabase
+                .from('contracts')
+                .select('client_id')
+                .in('id', batch);
+
+              if (contracts && contracts.length > 0) {
+                const overdueClientIds = contracts.map(c => c.client_id);
+                clientIds.push(...overdueClientIds);
+              }
+            }
+          }
+        }
+
+        if (filters.hasDueTodayPayments) {
+          // Buscar pagamentos vencendo hoje
+          const { data: dueTodayPayments } = await supabase
+            .from('payments')
+            .select('contract_id')
+            .eq('status', 'pending')
+            .eq('due_date', today);
+
+          if (dueTodayPayments && dueTodayPayments.length > 0) {
+            const contractIds = Array.from(new Set(dueTodayPayments.map(p => p.contract_id)));
+            
+            // Buscar client_ids desses contratos
+            const { data: contracts } = await supabase
+              .from('contracts')
+              .select('client_id')
+              .in('id', contractIds);
+
+            if (contracts && contracts.length > 0) {
+              const dueTodayClientIds = contracts.map(c => c.client_id);
+              clientIds.push(...dueTodayClientIds);
+            }
+          }
+        }
+
+        // Remover duplicatas
+        clientIds = Array.from(new Set(clientIds));
+
+        // Se não encontrou clientes com os critérios de pagamento, retornar vazio
+        if (clientIds.length === 0) {
+          return [];
+        }
+      }
+
+      // Se há filtros de pagamento, filtrar pelos IDs encontrados
+      if (clientIds.length > 0) {
+        // Processar em lotes também para a query final
+        const batchSize = 100;
+        const batches = [];
+        for (let i = 0; i < clientIds.length; i += batchSize) {
+          batches.push(clientIds.slice(i, i + batchSize));
+        }
+
+        let allClients: any[] = [];
+        for (const batch of batches) {
+          let batchQuery = supabase.from('clients').select('*').in('id', batch);
+          
+          // Filtro de busca por nome, email ou tax_id
+          if (filters.search && filters.search.trim()) {
+            const searchTerm = filters.search.trim();
+            batchQuery = batchQuery.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,tax_id.ilike.%${searchTerm}%`);
+          }
+
+          batchQuery = batchQuery.order('created_at', { ascending: false });
+
+          const { data: batchData, error: batchError } = await batchQuery;
+          
+          if (batchError) {
+            console.error('Error fetching clients batch:', batchError);
+            continue;
+          }
+
+          if (batchData) {
+            allClients.push(...batchData);
+          }
+        }
+
+        return allClients;
+      } else {
+        // Construir query principal para clientes sem filtros de pagamento
+        let query = supabase.from('clients').select('*');
 
         // Filtro de busca por nome, email ou tax_id
         if (filters.search && filters.search.trim()) {
@@ -116,80 +219,19 @@ export class ClientRepository {
         }
 
         query = query.order('created_at', { ascending: false });
+
         const { data, error } = await query;
-        if (error) throw error;
+        
+        if (error) {
+          console.error('Error fetching clients with filters:', error);
+          return [];
+        }
+
         return data || [];
       }
-
-      // Para filtros de pagamentos, usar abordagem com subquery
-      const today = new Date().toISOString().split('T')[0];
-      let clientIds: string[] = [];
-
-      // Se filtro de pagamentos atrasados está ativo
-      if (filters.hasOverduePayments) {
-        const { data: overduePayments, error: overdueError } = await supabase
-          .from('payments')
-          .select(`
-            contract_id,
-            contracts(
-              client_id
-            )
-          `)
-          .or(`status.eq.overdue,and(status.eq.pending,due_date.lt.${today})`);
-
-        if (overdueError) throw overdueError;
-        
-        const overdueClientIds = overduePayments?.map(p => (p.contracts as any)?.client_id).filter(id => id) || [];
-        clientIds = [...clientIds, ...overdueClientIds];
-      }
-
-      // Se filtro de pagamentos vencendo hoje está ativo
-      if (filters.hasDueTodayPayments) {
-        const { data: dueTodayPayments, error: dueTodayError } = await supabase
-          .from('payments')
-          .select(`
-            contract_id,
-            contracts(
-              client_id
-            )
-          `)
-          .eq('status', 'pending')
-          .eq('due_date', today);
-
-        if (dueTodayError) throw dueTodayError;
-        
-        const dueTodayClientIds = dueTodayPayments?.map(p => (p.contracts as any)?.client_id).filter(id => id) || [];
-        clientIds = [...clientIds, ...dueTodayClientIds];
-      }
-
-      // Remover duplicatas
-      const uniqueClientIds = [...new Set(clientIds)];
-
-      if (uniqueClientIds.length === 0) {
-        return [];
-      }
-
-      // Buscar os clientes pelos IDs encontrados
-      let query = supabase
-        .from('clients')
-        .select('*')
-        .in('id', uniqueClientIds);
-
-      // Filtro de busca por nome, email ou tax_id
-      if (filters.search && filters.search.trim()) {
-        const searchTerm = filters.search.trim();
-        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,tax_id.ilike.%${searchTerm}%`);
-      }
-
-      query = query.order('created_at', { ascending: false });
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      return data || [];
     } catch (error) {
       console.error('Error fetching clients with filters:', error);
-      throw new Error('Failed to fetch clients with filters');
+      return [];
     }
   }
 }
