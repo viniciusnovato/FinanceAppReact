@@ -8,15 +8,33 @@ export class ClientController {
     this.clientService = new ClientService();
   }
 
-  getAllClients = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAllClients = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const clients = await this.clientService.getAllClients();
+      const { search, hasOverduePayments } = req.query;
       
-      res.status(200).json({
-        success: true,
-        message: 'Clients retrieved successfully',
-        data: clients,
-      });
+      // Se há filtros, usar o método com filtros
+      if (search || hasOverduePayments) {
+        const filters = {
+          search: search as string,
+          hasOverduePayments: hasOverduePayments === 'true'
+        };
+        const clients = await this.clientService.getClientsWithFilters(filters);
+        
+        res.status(200).json({
+          success: true,
+          message: 'Clients retrieved successfully with filters',
+          data: clients,
+        });
+      } else {
+        // Caso contrário, usar o método padrão
+        const clients = await this.clientService.getAllClients();
+        
+        res.status(200).json({
+          success: true,
+          message: 'Clients retrieved successfully',
+          data: clients,
+        });
+      }
     } catch (error) {
       next(error);
     }

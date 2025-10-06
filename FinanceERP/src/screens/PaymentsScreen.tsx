@@ -647,51 +647,46 @@ const PaymentsScreen: React.FC = () => {
               containerStyle={styles.searchInput}
               editable={!contractId}
             />
+            
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            >
+              <Ionicons name="filter" size={20} color="#007AFF" />
+              <Text style={styles.filterButtonText}>Filtros Avançados</Text>
+              {Object.keys(advancedFilters).length > 0 && (
+                <View style={styles.filterIndicator} />
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.filtersContainer}>
-            <View style={styles.filtersRow}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filtersContent}
-                style={styles.basicFilters}
-              >
-                {filters.map((filter) => (
-                  <TouchableOpacity
-                    key={filter.key}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContent}
+              style={styles.basicFilters}
+            >
+              {filters.map((filter) => (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[
+                    styles.basicFilterButton,
+                    activeFilter === filter.key && styles.activeFilterButton,
+                  ]}
+                  onPress={() => setActiveFilter(filter.key)}
+                >
+                  <Text
                     style={[
-                      styles.filterButton,
-                      activeFilter === filter.key && styles.activeFilterButton,
+                      styles.basicFilterButtonText,
+                      activeFilter === filter.key && styles.activeFilterButtonText,
                     ]}
-                    onPress={() => setActiveFilter(filter.key)}
                   >
-                    <Text
-                      style={[
-                        styles.filterButtonText,
-                        activeFilter === filter.key && styles.activeFilterButtonText,
-                      ]}
-                    >
-                      {filter.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              
-              <TouchableOpacity
-                style={[styles.advancedFilterButton, showAdvancedFilters && styles.advancedFilterButtonActive]}
-                onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              >
-                <Ionicons 
-                  name="options" 
-                  size={16} 
-                  color={showAdvancedFilters ? '#FFFFFF' : '#64748B'} 
-                />
-                <Text style={[styles.advancedFilterText, showAdvancedFilters && styles.advancedFilterTextActive]}>
-                  Filtros
-                </Text>
-              </TouchableOpacity>
-            </View>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
           <FilterChips
@@ -785,47 +780,39 @@ const styles = StyleSheet.create({
   filtersContainer: {
     marginBottom: 20,
   },
-  filtersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   basicFilters: {
     flex: 1,
-    marginRight: 12,
   },
   filtersContent: {
     paddingRight: 16,
   },
-  advancedFilterButton: {
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    gap: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    minHeight: 36,
   },
-  advancedFilterButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  advancedFilterText: {
+  filterButtonText: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#007AFF',
     fontWeight: '500',
+    marginLeft: 6,
   },
-  advancedFilterTextActive: {
-    color: '#FFFFFF',
+  filterIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B35',
+    marginLeft: 8,
   },
-  filterButton: {
+  basicFilterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 8,
@@ -839,14 +826,14 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  activeFilterButton: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  filterButtonText: {
+  basicFilterButtonText: {
     fontSize: 14,
     color: '#64748B',
     fontWeight: '500',
+  },
+  activeFilterButton: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
   },
   activeFilterButtonText: {
     color: '#FFFFFF',

@@ -19,6 +19,7 @@ import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
 import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import ClientAdvancedFilters from '../components/filters/ClientAdvancedFilters';
 import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -46,6 +47,13 @@ const ClientsScreen: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
+  // Filter states
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<{
+    search?: string;
+    hasOverduePayments?: boolean;
+  }>({});
+
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
     return Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
@@ -60,7 +68,7 @@ const ClientsScreen: React.FC = () => {
 
   useEffect(() => {
     loadClients();
-  }, []);
+  }, [appliedFilters]);
 
   // Filter clients based on search query
   useEffect(() => {
@@ -85,7 +93,10 @@ const ClientsScreen: React.FC = () => {
   const loadClients = async () => {
     try {
       setIsLoading(true);
-      const response = await ApiService.getClients();
+      
+      // Use getClients with filters
+      const response = await ApiService.getClients(appliedFilters);
+      
       if (response.success && response.data) {
         setClients(response.data);
       } else {
@@ -221,6 +232,19 @@ const ClientsScreen: React.FC = () => {
       clientId: client.id,
       clientName: `${client.first_name} ${client.last_name}`
     });
+  };
+
+  const handleApplyFilters = (filters: { search?: string; hasOverduePayments?: boolean }) => {
+    setAppliedFilters(filters);
+    setShowAdvancedFilters(false);
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setAppliedFilters({});
+    setSearchQuery('');
+    setShowAdvancedFilters(false);
+    setCurrentPage(1);
   };
 
   // Pagination functions
@@ -431,6 +455,16 @@ const ClientsScreen: React.FC = () => {
               onChangeText={setSearchQuery}
               containerStyle={styles.searchInput}
             />
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowAdvancedFilters(true)}
+            >
+              <Ionicons name="filter" size={20} color="#007AFF" />
+              <Text style={styles.filterButtonText}>Filtros Avançados</Text>
+              {(appliedFilters.search || appliedFilters.hasOverduePayments) && (
+                <View style={styles.filterIndicator} />
+              )}
+            </TouchableOpacity>
           </View>
 
           <DataTable
@@ -454,6 +488,14 @@ const ClientsScreen: React.FC = () => {
         onSubmit={handleSubmitClient}
         client={editingClient}
         isLoading={isSubmitting}
+      />
+
+      <ClientAdvancedFilters
+        visible={showAdvancedFilters}
+        onClose={() => setShowAdvancedFilters(false)}
+        onApplyFilters={handleApplyFilters}
+        onClearFilters={handleClearFilters}
+        initialFilters={appliedFilters}
       />
 
       <ConfirmDialog
@@ -596,6 +638,31 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  filterIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B35',
+    marginLeft: 8,
   },
 });
 

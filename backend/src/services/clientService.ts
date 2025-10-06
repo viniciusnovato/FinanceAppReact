@@ -145,4 +145,11 @@ export class ClientService {
   async getClientByEmail(email: string): Promise<Client | null> {
     return this.clientRepository.findByEmail(email);
   }
+
+  async getClientsWithFilters(filters: {
+    search?: string;
+    hasOverduePayments?: boolean;
+  }): Promise<Client[]> {
+    return this.clientRepository.findAllWithFilters(filters);
+  }
 }
