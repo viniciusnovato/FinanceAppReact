@@ -10,13 +10,14 @@ export class ClientController {
 
   getAllClients = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { search, hasOverduePayments } = req.query;
+      const { search, hasOverduePayments, hasDueTodayPayments } = req.query;
       
       // Se há filtros, usar o método com filtros
-      if (search || hasOverduePayments) {
+      if (search || hasOverduePayments || hasDueTodayPayments) {
         const filters = {
           search: search as string,
-          hasOverduePayments: hasOverduePayments === 'true'
+          hasOverduePayments: hasOverduePayments === 'true',
+          hasDueTodayPayments: hasDueTodayPayments === 'true'
         };
         const clients = await this.clientService.getClientsWithFilters(filters);
         

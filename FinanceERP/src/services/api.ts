@@ -64,15 +64,18 @@ class ApiService {
   }
 
   // Client methods
-  async getClients(filters?: { search?: string; hasOverduePayments?: boolean }): Promise<ApiResponse<Client[]>> {
+  async getClients(filters?: { search?: string; hasOverduePayments?: boolean; hasDueTodayPayments?: boolean }): Promise<ApiResponse<Client[]>> {
     let endpoint = '/clients';
-    if (filters && (filters.search || filters.hasOverduePayments)) {
+    if (filters && (filters.search || filters.hasOverduePayments || filters.hasDueTodayPayments)) {
       const params: any = {};
       if (filters.search) {
         params.search = filters.search;
       }
       if (filters.hasOverduePayments) {
         params.hasOverduePayments = 'true';
+      }
+      if (filters.hasDueTodayPayments) {
+        params.hasDueTodayPayments = 'true';
       }
       const queryString = new URLSearchParams(params).toString();
       endpoint = `/clients?${queryString}`;

@@ -118,6 +118,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Função para converter data DD/MM/YYYY para YYYY-MM-DD
+  const convertDateToISO = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    // Se já está no formato ISO (YYYY-MM-DD), retorna como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Se está no formato DD/MM/YYYY, converte para YYYY-MM-DD
+    const match = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (match) {
+      const [, day, month, year] = match;
+      return `${year}-${month}-${day}`;
+    }
+    
+    return dateString; // Retorna como está se não conseguir converter
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       Alert.alert('Erro', 'Por favor, corrija os erros no formulário');
@@ -128,7 +147,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       const paymentData = {
         ...formData,
         amount: Number(formData.amount),
-        paid_date: formData.paid_date || undefined,
+        due_date: convertDateToISO(formData.due_date), // Converte para formato ISO
+        paid_date: formData.paid_date ? convertDateToISO(formData.paid_date) : undefined, // Converte para formato ISO se existir
         payment_type: formData.payment_type || undefined, // Convert empty string to undefined
         payment_method: formData.payment_method || undefined, // Convert empty string to undefined
         notes: formData.notes || undefined, // Convert empty string to undefined

@@ -52,6 +52,7 @@ const ClientsScreen: React.FC = () => {
   const [appliedFilters, setAppliedFilters] = useState<{
     search?: string;
     hasOverduePayments?: boolean;
+    hasDueTodayPayments?: boolean;
   }>({});
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
@@ -234,7 +235,7 @@ const ClientsScreen: React.FC = () => {
     });
   };
 
-  const handleApplyFilters = (filters: { search?: string; hasOverduePayments?: boolean }) => {
+  const handleApplyFilters = (filters: { search?: string; hasOverduePayments?: boolean; hasDueTodayPayments?: boolean }) => {
     setAppliedFilters(filters);
     setShowAdvancedFilters(false);
     setCurrentPage(1);
@@ -388,14 +389,14 @@ const ClientsScreen: React.FC = () => {
 
   const columns: DataTableColumn[] = [
     {
-      key: 'first_name',
-      title: 'Nome',
+      key: 'full_name',
+      title: 'Nome Completo',
       sortable: true,
-    },
-    {
-      key: 'last_name',
-      title: 'Sobrenome',
-      sortable: true,
+      render: (client: Client) => (
+        <Text style={{ fontSize: 14, color: '#374151', fontWeight: '500' }}>
+          {`${client.first_name} ${client.last_name}`}
+        </Text>
+      ),
     },
     {
       key: 'email',
@@ -461,7 +462,7 @@ const ClientsScreen: React.FC = () => {
             >
               <Ionicons name="filter" size={20} color="#007AFF" />
               <Text style={styles.filterButtonText}>Filtros Avançados</Text>
-              {(appliedFilters.search || appliedFilters.hasOverduePayments) && (
+              {(appliedFilters.search || appliedFilters.hasOverduePayments || appliedFilters.hasDueTodayPayments) && (
                 <View style={styles.filterIndicator} />
               )}
             </TouchableOpacity>

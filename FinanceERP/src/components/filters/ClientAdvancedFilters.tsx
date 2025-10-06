@@ -22,6 +22,9 @@ export interface ClientAdvancedFiltersData {
   
   // Overdue payments filter
   hasOverduePayments?: boolean;
+  
+  // Due today payments filter
+  hasDueTodayPayments?: boolean;
 }
 
 interface ClientAdvancedFiltersProps {
@@ -131,6 +134,28 @@ const ClientAdvancedFilters: React.FC<ClientAdvancedFiltersProps> = ({
                   onValueChange={(value) => updateFilter('hasOverduePayments', value)}
                   trackColor={{ false: '#E2E8F0', true: '#3B82F6' }}
                   thumbColor={filters.hasOverduePayments ? '#FFFFFF' : '#94A3B8'}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Due Today Payments Filter */}
+          {renderSectionWithIcon(
+            'calendar-outline',
+            'Pagamentos Vencendo Hoje',
+            <View style={styles.switchContainer}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchTextContainer}>
+                  <Text style={styles.switchLabel}>Apenas clientes com pagamentos vencendo hoje</Text>
+                  <Text style={styles.switchDescription}>
+                    Mostra apenas clientes que possuem pagamentos com vencimento na data atual
+                  </Text>
+                </View>
+                <Switch
+                  value={filters.hasDueTodayPayments || false}
+                  onValueChange={(value) => updateFilter('hasDueTodayPayments', value)}
+                  trackColor={{ false: '#E2E8F0', true: '#FF6B35' }}
+                  thumbColor={filters.hasDueTodayPayments ? '#FFFFFF' : '#94A3B8'}
                 />
               </View>
             </View>

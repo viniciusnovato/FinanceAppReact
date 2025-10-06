@@ -149,6 +149,7 @@ export class ClientService {
   async getClientsWithFilters(filters: {
     search?: string;
     hasOverduePayments?: boolean;
+    hasDueTodayPayments?: boolean;
   }): Promise<Client[]> {
     return this.clientRepository.findAllWithFilters(filters);
   }

@@ -19,24 +19,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthState = useCallback(async () => {
     try {
-      console.log('🔍 === CHECKING AUTH STATE ===');
       const token = await AsyncStorage.getItem('auth_token');
       const userData = await AsyncStorage.getItem('user_data');
       
-      console.log('🔍 Token found:', !!token);
-      console.log('🔍 User data found:', !!userData);
-      
       if (token && userData) {
-        console.log('🔍 Token preview:', token.substring(0, 50) + '...');
         const parsedUserData = JSON.parse(userData);
-        console.log('🔍 Parsed user data:', JSON.stringify(parsedUserData, null, 2));
         
         // Validate that the user data is complete
         if (parsedUserData && parsedUserData.id && parsedUserData.email) {
-          console.log('🔍 ✅ User data is valid, setting user');
           setUser(parsedUserData);
         } else {
-          console.log('🔍 ❌ User data is invalid, clearing storage');
           // Clear invalid data
           await AsyncStorage.removeItem('auth_token');
           await AsyncStorage.removeItem('user_data');
@@ -44,7 +36,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           await performAutoLogin();
         }
       } else {
-        console.log('🔍 ❌ No token or user data found - attempting auto-login for development');
         // Try auto-login for development
         await performAutoLogin();
       }
@@ -54,7 +45,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user_data');
     } finally {
-      console.log('🔍 === AUTH STATE CHECK COMPLETE ===');
       setIsLoading(false);
     }
   }, []);
