@@ -40,9 +40,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Clear invalid data
           await AsyncStorage.removeItem('auth_token');
           await AsyncStorage.removeItem('user_data');
+          // Try auto-login for development
+          await performAutoLogin();
         }
       } else {
-        console.log('🔍 ❌ No token or user data found - user needs to login');
+        console.log('🔍 ❌ No token or user data found - attempting auto-login for development');
+        // Try auto-login for development
+        await performAutoLogin();
       }
     } catch (error) {
       console.error('❌ Error checking auth state:', error);
@@ -52,6 +56,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       console.log('🔍 === AUTH STATE CHECK COMPLETE ===');
       setIsLoading(false);
+    }
+  }, []);
+
+  const performAutoLogin = useCallback(async () => {
+    try {
+      console.log('🤖 === ATTEMPTING AUTO-LOGIN FOR DEVELOPMENT ===');
+      const response = await ApiService.login('admin@institutoareluna.pt', 'admin123');
+      
+      console.log('🤖 Auto-login response:', response);
+      
+      if (response.data && response.data.user && response.data.token) {
+        const { user: userData, token } = response.data;
+        
+        console.log('🤖 Auto-login successful, storing credentials');
+        await AsyncStorage.setItem('auth_token', token);
+        await AsyncStorage.setItem('user_data', JSON.stringify(userData));
+        
+        setUser(userData);
+        console.log('🤖 ✅ Auto-login completed successfully');
+      } else {
+        console.log('🤖 ❌ Auto-login failed: Invalid response format');
+      }
+    } catch (error) {
+      console.error('🤖 ❌ Auto-login error:', error);
+      // Don't throw error here, just log it - user can still login manually
     }
   }, []);
 

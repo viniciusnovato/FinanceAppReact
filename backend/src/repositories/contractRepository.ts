@@ -196,17 +196,24 @@ export class ContractRepository {
         console.log('❌ ContractRepository: No payments found in contract data');
       }
 
-      // Calculate paid percentage
-      const downPayment = parseFloat(contract.down_payment || '0');
+      // Calculate paid percentage based on actual payments made
       const contractValue = parseFloat(contract.value || '0');
       
-      // Sum all paid payments (including complementary payments)
-      const paidPayments = contract.payments?.filter((payment: any) => payment.status === 'paid') || [];
+      // Sum all paid payments (downPayment and normalPayment only, as per new requirements)
+      const paidPayments = contract.payments?.filter((payment: any) => 
+        payment.status === 'paid' && 
+        (payment.payment_method === 'downPayment' || 
+         payment.payment_method === 'normalPayment' ||
+         payment.payment_type === 'downPayment' || 
+         payment.payment_type === 'normalPayment')
+      ) || [];
+      
       const totalPaidFromPayments = paidPayments.reduce((sum: number, payment: any) => {
         return sum + parseFloat(payment.amount || '0');
       }, 0);
 
-      const totalPaid = downPayment + totalPaidFromPayments;
+      // New calculation: percentage based only on actual payments made
+      const totalPaid = totalPaidFromPayments;
       const paidPercentage = contractValue > 0 ? (totalPaid / contractValue) * 100 : 0;
 
       // Filter payments by type

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import MainLayout from '../components/layout/MainLayout';
 import DataTable, { DataTableColumn } from '../components/DataTable';
+import ContractAdvancedFilters, { ContractAdvancedFiltersData } from '../components/filters/ContractAdvancedFilters';
+import ContractFilterChips from '../components/filters/ContractFilterChips';
 import { formatCurrency } from '../utils/currency';
 import { formatDate } from '../utils/dateUtils';
 import ContractForm from '../components/forms/ContractForm';
@@ -54,6 +56,10 @@ const ContractsScreen: React.FC = () => {
   // Contract details modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
+  
+  // Advanced filters states
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<ContractAdvancedFiltersData>({});
 
   // Calculate total pages using useMemo to avoid unnecessary recalculations
   const totalPages = useMemo(() => {
@@ -78,9 +84,9 @@ const ContractsScreen: React.FC = () => {
     }
   }, [route.params?.clientName]);
 
-  // Filter contracts based on search query and client filter
-  useEffect(() => {
-    let filtered = contracts;
+  // Filter contracts based on search query, client filter, and advanced filters
+  const applyFilters = useCallback((contractsList: Contract[]) => {
+    let filtered = contractsList;
 
     // Filter by client ID if provided
     if (route.params?.clientId) {
@@ -103,9 +109,120 @@ const ContractsScreen: React.FC = () => {
       });
     }
 
+    // Apply advanced filters
+     if (Object.keys(advancedFilters).length > 0) {
+       filtered = filtered.filter(contract => {
+         // Date filters
+         if (advancedFilters.start_date_from && contract.start_date) {
+           const startDate = new Date(contract.start_date);
+           const filterDate = new Date(advancedFilters.start_date_from);
+           if (startDate < filterDate) return false;
+         }
+         
+         if (advancedFilters.start_date_to && contract.start_date) {
+           const startDate = new Date(contract.start_date);
+           const filterDate = new Date(advancedFilters.start_date_to);
+           if (startDate > filterDate) return false;
+         }
+         
+         if (advancedFilters.end_date_from && contract.end_date) {
+           const endDate = new Date(contract.end_date);
+           const filterDate = new Date(advancedFilters.end_date_from);
+           if (endDate < filterDate) return false;
+         }
+         
+         if (advancedFilters.end_date_to && contract.end_date) {
+           const endDate = new Date(contract.end_date);
+           const filterDate = new Date(advancedFilters.end_date_to);
+           if (endDate > filterDate) return false;
+         }
+         
+         if (advancedFilters.created_at_from && contract.created_at) {
+           const createdDate = new Date(contract.created_at);
+           const filterDate = new Date(advancedFilters.created_at_from);
+           if (createdDate < filterDate) return false;
+         }
+         
+         if (advancedFilters.created_at_to && contract.created_at) {
+           const createdDate = new Date(contract.created_at);
+           const filterDate = new Date(advancedFilters.created_at_to);
+           if (createdDate > filterDate) return false;
+         }
+
+         // Value filters
+         if (advancedFilters.value_from && contract.value !== undefined) {
+           const valueFrom = parseFloat(advancedFilters.value_from);
+           if (!isNaN(valueFrom) && contract.value < valueFrom) return false;
+         }
+         
+         if (advancedFilters.value_to && contract.value !== undefined) {
+           const valueTo = parseFloat(advancedFilters.value_to);
+           if (!isNaN(valueTo) && contract.value > valueTo) return false;
+         }
+
+         // Contract specific filters
+         if (advancedFilters.contract_number) {
+           const contractNumber = advancedFilters.contract_number.toLowerCase();
+           if (!contract.contract_number?.toLowerCase().includes(contractNumber)) return false;
+         }
+         
+         if (advancedFilters.description) {
+           const description = advancedFilters.description.toLowerCase();
+           if (!contract.description?.toLowerCase().includes(description)) return false;
+         }
+         
+         if (advancedFilters.number_of_payments_from && contract.number_of_payments !== undefined) {
+           const paymentsFrom = parseInt(advancedFilters.number_of_payments_from);
+           if (!isNaN(paymentsFrom) && contract.number_of_payments < paymentsFrom) return false;
+         }
+         
+         if (advancedFilters.number_of_payments_to && contract.number_of_payments !== undefined) {
+           const paymentsTo = parseInt(advancedFilters.number_of_payments_to);
+           if (!isNaN(paymentsTo) && contract.number_of_payments > paymentsTo) return false;
+         }
+
+         // Status filter
+         if (advancedFilters.status && advancedFilters.status !== '') {
+           if (contract.status !== advancedFilters.status) return false;
+         }
+
+         // Client filters
+         if (advancedFilters.client_name) {
+           const clientName = advancedFilters.client_name.toLowerCase();
+           const contractClientName = contract.client 
+             ? `${contract.client.first_name || ''} ${contract.client.last_name || ''}`.toLowerCase().trim()
+             : '';
+           if (!contractClientName.includes(clientName)) return false;
+         }
+         
+         if (advancedFilters.client_email) {
+           const clientEmail = advancedFilters.client_email.toLowerCase();
+           if (!contract.client?.email?.toLowerCase().includes(clientEmail)) return false;
+         }
+         
+         if (advancedFilters.client_phone) {
+           const clientPhone = advancedFilters.client_phone.toLowerCase();
+           if (!contract.client?.phone?.toLowerCase().includes(clientPhone)) return false;
+         }
+         
+         if (advancedFilters.client_tax_id) {
+           const clientTaxId = advancedFilters.client_tax_id.toLowerCase();
+           if (!contract.client?.tax_id?.toLowerCase().includes(clientTaxId)) return false;
+         }
+
+         return true;
+       });
+     }
+
+    return filtered;
+  }, [searchQuery, route.params?.clientId, advancedFilters]);
+
+  // Update filtered contracts when contracts, search query, client filter, or advanced filters change
+  useEffect(() => {
+    const filtered = applyFilters(contracts);
     setFilteredContracts(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  }, [searchQuery, contracts, route.params?.clientId]);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [contracts, applyFilters]);
 
   const loadContracts = async () => {
     try {
@@ -512,6 +629,38 @@ const ContractsScreen: React.FC = () => {
             />
           </View>
 
+          <View style={styles.filtersContainer}>
+            <View style={styles.filtersRow}>
+              <View style={styles.basicFilters}>
+                {/* Espaço reservado para filtros básicos futuros */}
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.advancedFilterButton, showAdvancedFilters && styles.advancedFilterButtonActive]}
+                onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              >
+                <Ionicons 
+                  name="options" 
+                  size={16} 
+                  color={showAdvancedFilters ? '#FFFFFF' : '#64748B'} 
+                />
+                <Text style={[styles.advancedFilterText, showAdvancedFilters && styles.advancedFilterTextActive]}>
+                  Filtros
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ContractFilterChips
+            filters={advancedFilters}
+            onRemoveFilter={(key) => {
+              const newFilters = { ...advancedFilters };
+              delete newFilters[key];
+              setAdvancedFilters(newFilters);
+            }}
+            onClearAll={() => setAdvancedFilters({})}
+          />
+
           <DataTable
             data={getCurrentPageData()}
             columns={columns}
@@ -553,6 +702,20 @@ const ContractsScreen: React.FC = () => {
         }}
         contractId={selectedContractId}
       />
+      
+      <ContractAdvancedFilters
+         visible={showAdvancedFilters}
+         onClose={() => setShowAdvancedFilters(false)}
+         onApplyFilters={(filters: ContractAdvancedFiltersData) => {
+           setAdvancedFilters(filters);
+           setShowAdvancedFilters(false);
+         }}
+         onClearFilters={() => {
+           setAdvancedFilters({});
+           setShowAdvancedFilters(false);
+         }}
+         initialFilters={advancedFilters}
+       />
     </MainLayout>
   );
 };
@@ -594,7 +757,54 @@ const styles = StyleSheet.create({
   searchInput: {
     marginBottom: 0,
   },
+  filtersContainer: {
+    marginBottom: 20,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  basicFilters: {
+    flex: 1,
+    marginRight: 12,
+  },
+  advancedFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    gap: 6,
+  },
+  advancedFilterButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  advancedFilterText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  advancedFilterTextActive: {
+    color: '#FFFFFF',
+  },
   statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientFilter: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
