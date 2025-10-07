@@ -394,12 +394,12 @@ const ClientsScreen: React.FC = () => {
 
   const columns: DataTableColumn[] = [
     {
-      key: 'full_name',
-      title: 'Nome Completo',
+      key: 'first_name',
+      title: 'Nome',
       sortable: true,
       render: (client: Client) => (
         <Text style={{ fontSize: 14, color: '#374151', fontWeight: '500' }}>
-          {`${client.first_name} ${client.last_name}`}
+          {client.first_name || 'N/A'}
         </Text>
       ),
     },
