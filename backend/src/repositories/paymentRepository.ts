@@ -753,7 +753,24 @@ export class PaymentRepository {
       }
 
       if (search) {
-        const searchFilter = `description.ilike.%${search}%,amount.eq.${parseFloat(search) || 0}`;
+        const searchTerm = search.trim();
+        const numericValue = parseFloat(searchTerm);
+        const isNumeric = !isNaN(numericValue) && isFinite(numericValue);
+        
+        // Construir filtro de busca abrangente
+        let searchFilters = [
+          `notes.ilike.%${searchTerm}%`,
+          `contracts.contract_number.ilike.%${searchTerm}%`,
+          `contracts.clients.first_name.ilike.%${searchTerm}%`,
+          `contracts.clients.last_name.ilike.%${searchTerm}%`
+        ];
+        
+        // Adicionar busca por valor se for numérico
+        if (isNumeric && numericValue > 0) {
+          searchFilters.push(`amount.eq.${numericValue}`);
+        }
+        
+        const searchFilter = searchFilters.join(',');
         countQuery = countQuery.or(searchFilter);
         dataQuery = dataQuery.or(searchFilter);
       }
