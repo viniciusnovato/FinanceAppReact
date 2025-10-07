@@ -98,6 +98,147 @@ export class PaymentRepository {
         return this.findAllPaginatedWithClientNameFilter(options, filters);
       }
 
+      // Se o filtro for 'overdue', usar lógica especial
+      if (status === 'overdue') {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Query base para contagem de pagamentos atrasados
+        let countQuery = supabase
+          .from('payments')
+          .select(`
+            *,
+            contract:contracts!inner(
+              *,
+              client:clients!inner(*)
+            )
+          `, { count: 'exact', head: true })
+          .eq('status', 'pending')
+          .lt('due_date', today);
+
+        // Query base para dados de pagamentos atrasados
+        let dataQuery = supabase
+          .from('payments')
+          .select(`
+            *,
+            contract:contracts!inner(
+              *,
+              client:clients!inner(*)
+            )
+          `)
+          .eq('status', 'pending')
+          .lt('due_date', today);
+
+        // Aplicar outros filtros (exceto status)
+        if (contractId) {
+          countQuery = countQuery.eq('contract_id', contractId);
+          dataQuery = dataQuery.eq('contract_id', contractId);
+        }
+
+        // Filtros de data (mantendo a lógica de overdue)
+        if (due_date_from) {
+          countQuery = countQuery.gte('due_date', due_date_from);
+          dataQuery = dataQuery.gte('due_date', due_date_from);
+        }
+
+        if (due_date_to) {
+          countQuery = countQuery.lte('due_date', due_date_to);
+          dataQuery = dataQuery.lte('due_date', due_date_to);
+        }
+
+        if (paid_date_from) {
+          countQuery = countQuery.gte('paid_date', paid_date_from);
+          dataQuery = dataQuery.gte('paid_date', paid_date_from);
+        }
+
+        if (paid_date_to) {
+          countQuery = countQuery.lte('paid_date', paid_date_to);
+          dataQuery = dataQuery.lte('paid_date', paid_date_to);
+        }
+
+        if (created_at_from) {
+          countQuery = countQuery.gte('created_at', created_at_from);
+          dataQuery = dataQuery.gte('created_at', created_at_from);
+        }
+
+        if (created_at_to) {
+          countQuery = countQuery.lte('created_at', created_at_to);
+          dataQuery = dataQuery.lte('created_at', created_at_to);
+        }
+
+        // Filtros de valor
+        if (amount_min !== undefined) {
+          countQuery = countQuery.gte('amount', amount_min);
+          dataQuery = dataQuery.gte('amount', amount_min);
+        }
+
+        if (amount_max !== undefined) {
+          countQuery = countQuery.lte('amount', amount_max);
+          dataQuery = dataQuery.lte('amount', amount_max);
+        }
+
+        // Filtros de método e tipo de pagamento
+        if (payment_method) {
+          countQuery = countQuery.eq('payment_method', payment_method);
+          dataQuery = dataQuery.eq('payment_method', payment_method);
+        }
+
+        if (payment_type) {
+          countQuery = countQuery.eq('payment_type', payment_type);
+          dataQuery = dataQuery.eq('payment_type', payment_type);
+        }
+
+        // Filtros de contrato
+        if (contract_number) {
+          countQuery = countQuery.eq('contracts.contract_number', contract_number);
+          dataQuery = dataQuery.eq('contracts.contract_number', contract_number);
+        }
+
+        if (contract_status) {
+          countQuery = countQuery.eq('contracts.status', contract_status);
+          dataQuery = dataQuery.eq('contracts.status', contract_status);
+        }
+
+        // Filtros de cliente
+        if (client_email) {
+          countQuery = countQuery.ilike('contracts.clients.email', `%${client_email}%`);
+          dataQuery = dataQuery.ilike('contracts.clients.email', `%${client_email}%`);
+        }
+
+        if (client_phone) {
+          countQuery = countQuery.ilike('contracts.clients.phone', `%${client_phone}%`);
+          dataQuery = dataQuery.ilike('contracts.clients.phone', `%${client_phone}%`);
+        }
+
+        if (tax_id) {
+          countQuery = countQuery.eq('contracts.clients.tax_id', tax_id);
+          dataQuery = dataQuery.eq('contracts.clients.tax_id', tax_id);
+        }
+
+        // Executar query de contagem
+        const { count, error: countError } = await countQuery;
+        if (countError) throw countError;
+
+        // Executar query de dados com paginação
+        const { data, error } = await dataQuery
+          .order('due_date', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+
+        const total = count || 0;
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+          data: data || [],
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        };
+      }
+
       // Construir query base com joins para permitir filtros cruzados
       let countQuery = supabase
         .from('payments')

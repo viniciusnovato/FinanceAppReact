@@ -39,6 +39,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     payment_method: '',
     notes: '',
     payment_type: 'normalPayment',
+    paid_amount: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,6 +64,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         payment_method: payment.payment_method || '',
         notes: payment.notes || '',
         payment_type: payment.payment_type || 'normalPayment',
+        paid_amount: payment.paid_amount?.toString() || '',
       });
       
       // Find and set selected contract
@@ -81,6 +83,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         payment_method: '',
         notes: '',
         payment_type: 'normalPayment',
+        paid_amount: '',
       });
       setSelectedContract(null);
     }
@@ -152,6 +155,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         payment_type: formData.payment_type || undefined, // Convert empty string to undefined
         payment_method: formData.payment_method || undefined, // Convert empty string to undefined
         notes: formData.notes || undefined, // Convert empty string to undefined
+        paid_amount: formData.paid_amount ? Number(formData.paid_amount) : undefined, // Convert to number if provided
       };
 
       await onSubmit(paymentData);
@@ -312,6 +316,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 onDateChange={(value) => updateField('paid_date', value)}
                 placeholder="DD/MM/AAAA"
                 mode="date"
+              />
+
+              <Input
+                label="Valor Pago"
+                value={formData.paid_amount}
+                onChangeText={(value) => updateField('paid_amount', value)}
+                placeholder="0,00"
+                keyboardType="numeric"
               />
             </View>
 

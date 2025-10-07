@@ -464,25 +464,53 @@ const PaymentsScreen: React.FC = () => {
     }
   };
 
-  const renderStatusBadge = (payment: Payment, status: string) => (
-    <View style={[
-      styles.statusBadge,
-      status === 'paid' ? styles.paidBadge : 
-      status === 'pending' ? styles.pendingBadge :
-      status === 'overdue' ? styles.overdueBadge : styles.failedBadge
-    ]}>
-      <Text style={[
-        styles.statusText,
-        { color: status === 'paid' ? '#34C759' : 
-                 status === 'pending' ? '#FF9500' :
-                 status === 'overdue' ? '#FF3B30' : '#8E8E93' }
+  // Função para calcular o status real do pagamento (incluindo atrasado)
+  const getPaymentStatus = (payment: Payment): string => {
+    if (payment.status === 'paid' || payment.status === 'failed') {
+      return payment.status;
+    }
+    
+    // Se o status é 'pending', verificar se está atrasado
+    if (payment.status === 'pending' && payment.due_date) {
+      const today = new Date();
+      const dueDate = new Date(payment.due_date);
+      
+      // Zerar as horas para comparar apenas as datas
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today) {
+        return 'overdue';
+      }
+    }
+    
+    return payment.status;
+  };
+
+  const renderStatusBadge = (payment: Payment, status: string) => {
+    // Calcular o status real do pagamento
+    const realStatus = getPaymentStatus(payment);
+    
+    return (
+      <View style={[
+        styles.statusBadge,
+        realStatus === 'paid' ? styles.paidBadge : 
+        realStatus === 'pending' ? styles.pendingBadge :
+        realStatus === 'overdue' ? styles.overdueBadge : styles.failedBadge
       ]}>
-        {status === 'paid' ? 'Pago' : 
-         status === 'pending' ? 'Pendente' :
-         status === 'overdue' ? 'Atrasado' : 'Cancelado'}
-      </Text>
-    </View>
-  );
+        <Text style={[
+          styles.statusText,
+          { color: realStatus === 'paid' ? '#34C759' : 
+                   realStatus === 'pending' ? '#FF9500' :
+                   realStatus === 'overdue' ? '#FF3B30' : '#8E8E93' }
+        ]}>
+          {realStatus === 'paid' ? 'Pago' : 
+           realStatus === 'pending' ? 'Pendente' :
+           realStatus === 'overdue' ? 'Atrasado' : 'Cancelado'}
+        </Text>
+      </View>
+    );
+  };
 
   const getFilterLabel = (filter: PaymentFilter) => {
     switch (filter) {
@@ -764,6 +792,7 @@ const PaymentsScreen: React.FC = () => {
       <ManualPaymentModal
         visible={showManualPaymentModal}
         payment={selectedPaymentForManual}
+        contractPositiveBalance={selectedPaymentForManual?.contract?.positive_balance || 0}
         onClose={() => {
           console.log('🔍 Fechando modal de pagamento manual');
           setShowManualPaymentModal(false);
