@@ -58,7 +58,7 @@ export class DashboardService {
         supabase
           .from('contracts')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'Ativo'),
+          .eq('status', 'ativo'),
         
         // Total de pagamentos
         supabase
