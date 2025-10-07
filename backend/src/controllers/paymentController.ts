@@ -254,4 +254,29 @@ export class PaymentController {
       next(error);
     }
   };
+
+  processManualPayment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { amount } = req.body;
+      
+      if (!amount || amount <= 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Amount must be a positive number',
+        });
+        return;
+      }
+
+      const result = await this.paymentService.processManualPayment(id, amount);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Manual payment processed successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -33,6 +33,7 @@ export interface Contract {
   notes?: string;
   down_payment?: number;
   number_of_payments?: number;
+  positive_balance?: number;
   created_at: string;
   updated_at: string;
   client?: Client;
@@ -42,13 +43,14 @@ export interface Payment {
   id: string;
   contract_id: string;
   amount: number;
-  due_date?: string;
+  due_date: string;
   paid_date?: string;
   status?: string;
   payment_method?: string;
   notes?: string;
   external_id?: string;
   payment_type?: string;
+  paid_amount?: number;
   created_at: string;
   updated_at: string;
   contract?: Contract;

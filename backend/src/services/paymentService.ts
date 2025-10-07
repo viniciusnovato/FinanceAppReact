@@ -196,4 +196,90 @@ export class PaymentService {
       overdueAmount,
     };
   }
+
+  async processManualPayment(paymentId: string, amount: number): Promise<{
+    payment: Payment;
+    newPayment?: Payment;
+    contractUpdated?: boolean;
+    message: string;
+  }> {
+    const payment = await this.paymentRepository.findById(paymentId);
+    if (!payment) {
+      throw createError('Payment not found', 404);
+    }
+
+    if (payment.status === 'paid') {
+      throw createError('Payment is already marked as paid', 400);
+    }
+
+    const originalAmount = payment.amount;
+    
+    // Caso 1: Pagamento exato
+    if (amount === originalAmount) {
+      const updatedPayment = await this.paymentRepository.update(paymentId, {
+        status: 'paid',
+        paid_amount: amount
+      });
+      
+      return {
+        payment: updatedPayment!,
+        message: 'Payment completed successfully'
+      };
+    }
+    
+    // Caso 2: Pagamento parcial
+    if (amount < originalAmount) {
+      const remainingAmount = originalAmount - amount;
+      
+      // Atualizar pagamento atual como pago parcialmente
+      const updatedPayment = await this.paymentRepository.update(paymentId, {
+        status: 'paid',
+        paid_amount: amount
+      });
+      
+      // Criar nova parcela para o saldo devedor
+      const newPayment = await this.paymentRepository.create({
+        contract_id: payment.contract_id,
+        amount: remainingAmount,
+        due_date: payment.due_date, // Mesma data de vencimento
+        status: 'pending',
+        payment_type: 'normalPayment',
+        paid_amount: 0
+      });
+      
+      return {
+        payment: updatedPayment!,
+        newPayment,
+        message: `Partial payment processed. New installment created for remaining amount: R$ ${remainingAmount.toFixed(2)}`
+      };
+    }
+    
+    // Caso 3: Pagamento excedente
+    if (amount > originalAmount) {
+      const excessAmount = amount - originalAmount;
+      
+      // Atualizar pagamento atual como pago
+      const updatedPayment = await this.paymentRepository.update(paymentId, {
+        status: 'paid',
+        paid_amount: amount
+      });
+      
+      // Atualizar positive_balance do contrato
+      const contract = await this.contractRepository.findById(payment.contract_id);
+      if (contract) {
+        const currentBalance = contract.positive_balance || 0;
+        await this.contractRepository.update(payment.contract_id, {
+          positive_balance: currentBalance + excessAmount
+        });
+      }
+      
+      return {
+        payment: updatedPayment!,
+        contractUpdated: true,
+        message: `Payment completed with excess amount. R$ ${excessAmount.toFixed(2)} added to contract balance`
+      };
+    }
+
+    throw createError('Invalid payment amount', 400);
+  }
 }

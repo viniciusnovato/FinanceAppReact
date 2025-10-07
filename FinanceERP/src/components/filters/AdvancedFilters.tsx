@@ -80,11 +80,11 @@ const paymentTypes = [
 
 const contractStatuses = [
   { value: '', label: 'Todos os status' },
-  { value: 'Ativo', label: 'Ativo' },
-  { value: 'Liquidado', label: 'Liquidado' },
-  { value: 'Renegociado', label: 'Renegociado' },
-  { value: 'Cancelado', label: 'Cancelado' },
-  { value: 'Jurídico', label: 'Jurídico' },
+  { value: 'ativo', label: 'Ativo' },
+  { value: 'liquidado', label: 'Liquidado' },
+  { value: 'renegociado', label: 'Renegociado' },
+  { value: 'cancelado', label: 'Cancelado' },
+  { value: 'jurídico', label: 'Jurídico' },
 ];
 
 const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({

@@ -23,6 +23,7 @@ import PaymentForm from '../components/forms/PaymentForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import AdvancedFilters from '../components/filters/AdvancedFilters';
 import FilterChips from '../components/filters/FilterChips';
+import { ManualPaymentModal } from '../components/ManualPaymentModal';
 import { MainStackParamList } from '../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -70,6 +71,10 @@ const PaymentsScreen: React.FC = () => {
   // Advanced filters state
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<any>({});
+
+  // Manual payment modal state
+  const [showManualPaymentModal, setShowManualPaymentModal] = useState(false);
+  const [selectedPaymentForManual, setSelectedPaymentForManual] = useState<Payment | null>(null);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -423,28 +428,35 @@ const PaymentsScreen: React.FC = () => {
 
   const handleTogglePaymentStatus = async (payment: Payment) => {
     try {
-      const newStatus = payment.status === 'paid' ? 'pending' : 'paid';
-      const updateData = { 
-        status: newStatus, 
-        paid_date: newStatus === 'paid' ? new Date().toISOString() : undefined 
-      };
-      
-      // Call the API to update the payment
-      const response = await ApiService.updatePayment(payment.id, updateData);
-      
-      if (response.success && response.data) {
-        // Update local state with the response from the API
-        const updatedPayments = payments.map(p => 
-          p.id === payment.id ? response.data : p
-        );
-        setPayments(updatedPayments);
+      if (payment.status === 'paid') {
+        // Se está pago, apenas marcar como pendente
+        const updateData = { 
+          status: 'pending', 
+          paid_date: undefined,
+          paid_amount: 0
+        };
         
-        const message = newStatus === 'paid' 
-          ? 'Pagamento marcado como pago' 
-          : 'Pagamento marcado como pendente';
-        Alert.alert('Sucesso', message);
+        const response = await ApiService.updatePayment(payment.id, updateData);
+        
+        if (response.success && response.data) {
+          const updatedPayments = payments.map(p => 
+            p.id === payment.id ? response.data : p
+          );
+          setPayments(updatedPayments);
+          Alert.alert('Sucesso', 'Pagamento marcado como pendente');
+        } else {
+          throw new Error('Failed to update payment');
+        }
       } else {
-        throw new Error('Failed to update payment');
+        // Se não está pago, usar a lógica de pagamento manual com valor total
+        const response = await ApiService.processManualPayment(payment.id, payment.amount);
+        
+        if (response.success) {
+          Alert.alert('Sucesso', response.data.message);
+          await loadPayments(); // Recarregar para pegar possíveis novos pagamentos criados
+        } else {
+          throw new Error(response.message || 'Erro ao processar pagamento');
+        }
       }
     } catch (error) {
       console.error('Error toggling payment status:', error);
@@ -596,10 +608,22 @@ const PaymentsScreen: React.FC = () => {
     {
       key: 'actions',
       title: 'Ações',
-      width: isTablet ? 100 : 80,
+      width: isTablet ? 120 : 100,
       sortable: false,
       render: (payment: Payment) => (
         <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.moneyButton]}
+            onPress={() => {
+              console.log('🔍 Clicou no ícone de dinheiro para pagamento:', payment.id);
+              console.log('🔍 Payment data:', payment);
+              setSelectedPaymentForManual(payment);
+              setShowManualPaymentModal(true);
+              console.log('🔍 Modal deve estar visível agora');
+            }}
+          >
+            <Ionicons name="cash" size={16} color="#F59E0B" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.editButton]}
             onPress={() => handleEditPayment(payment)}
@@ -735,6 +759,41 @@ const PaymentsScreen: React.FC = () => {
         onConfirm={confirmDeletePayment}
         onCancel={() => setShowConfirmDialog(false)}
         isDestructive={true}
+      />
+
+      <ManualPaymentModal
+        visible={showManualPaymentModal}
+        payment={selectedPaymentForManual}
+        onClose={() => {
+          console.log('🔍 Fechando modal de pagamento manual');
+          setShowManualPaymentModal(false);
+          setSelectedPaymentForManual(null);
+        }}
+        onConfirm={async (paymentAmount) => {
+          console.log('🔍 Confirmando pagamento manual:', paymentAmount);
+          if (!selectedPaymentForManual) return;
+
+          try {
+            setIsLoading(true);
+            
+            const response = await ApiService.processManualPayment(selectedPaymentForManual.id, paymentAmount);
+            
+            if (response.success) {
+              Alert.alert('Sucesso', response.data.message);
+              setShowManualPaymentModal(false);
+              setSelectedPaymentForManual(null);
+              await loadPayments();
+            } else {
+              throw new Error(response.message || 'Erro ao processar pagamento');
+            }
+            
+          } catch (error) {
+            console.error('Erro ao processar pagamento manual:', error);
+            Alert.alert('Erro', error instanceof Error ? error.message : 'Erro ao processar pagamento');
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       />
     </MainLayout>
   );
@@ -884,6 +943,10 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+  },
+  moneyButton: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
   },
   paginationContainer: {
     marginTop: 20,

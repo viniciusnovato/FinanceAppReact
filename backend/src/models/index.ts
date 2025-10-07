@@ -41,6 +41,7 @@ export interface Contract {
   notes?: string;
   down_payment?: number;
   number_of_payments?: number;
+  positive_balance?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -54,6 +55,7 @@ export interface Payment {
   status: 'pending' | 'paid' | 'overdue';
   payment_method?: string;
   payment_type?: 'normalPayment' | 'downPayment';
+  paid_amount?: number;
   notes?: string;
   external_id?: string;
   created_at: Date;

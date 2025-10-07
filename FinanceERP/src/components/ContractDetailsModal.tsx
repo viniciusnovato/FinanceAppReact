@@ -19,6 +19,7 @@ interface ContractDetails {
   status: string;
   start_date: string;
   end_date: string;
+  positive_balance?: number;
   client: {
     id: string;
     first_name: string;
@@ -258,6 +259,14 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 {formatDate(contractDetails.start_date)} - {formatDate(contractDetails.end_date)}
               </Text>
             </View>
+            {contractDetails.positive_balance && contractDetails.positive_balance > 0 && (
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Saldo Positivo:</Text>
+                <Text style={[styles.infoValue, { color: '#10B981', fontWeight: '700' }]}>
+                  {formatCurrency(contractDetails.positive_balance.toString())}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 

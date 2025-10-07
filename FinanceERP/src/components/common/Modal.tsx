@@ -24,6 +24,8 @@ export const Modal: React.FC<ModalProps> = ({
     ...(height && { height })
   };
 
+  console.log('🔍 Modal base renderizado:', { visible, title });
+
   return (
     <RNModal
       visible={visible}

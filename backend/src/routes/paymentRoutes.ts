@@ -23,5 +23,6 @@ router.post('/', paymentController.createPayment);
 router.put('/:id', paymentController.updatePayment);
 router.delete('/:id', paymentController.deletePayment);
 router.patch('/:id/mark-paid', paymentController.markPaymentAsPaid);
+router.post('/:id/manual-payment', paymentController.processManualPayment);
 
 export default router;
