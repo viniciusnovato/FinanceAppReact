@@ -74,6 +74,11 @@ export class ContractService {
     // Process date fields - convert empty strings to null and format dates
     const processedData = { ...contractData } as any;
     
+    // Set default status if not provided
+    if (!processedData.status) {
+      processedData.status = 'ativo';
+    }
+    
     if (processedData.start_date === '') {
       processedData.start_date = null;
     } else if (processedData.start_date) {
@@ -275,7 +280,7 @@ export class ContractService {
           status: status,
           payment_method: undefined,
           payment_type: 'normalPayment',
-          notes: `Parcela ${i} de ${numberOfPayments}`,
+          notes: `${i}/${numberOfPayments}`,
           external_id: undefined,
           paid_date: undefined,
         });
