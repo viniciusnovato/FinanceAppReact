@@ -259,14 +259,22 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 {formatDate(contractDetails.start_date)} - {formatDate(contractDetails.end_date)}
               </Text>
             </View>
-            {contractDetails.positive_balance && contractDetails.positive_balance > 0 && (
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Saldo Positivo:</Text>
+            {/* Saldo Positivo - sempre exibir para dar clareza */}
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Saldo Positivo:</Text>
+              {contractDetails.positive_balance && contractDetails.positive_balance > 0 ? (
                 <Text style={[styles.infoValue, { color: '#10B981', fontWeight: '700' }]}>
                   {formatCurrency(contractDetails.positive_balance.toString())}
                 </Text>
-              </View>
-            )}
+              ) : (
+                <View style={styles.zeroBalanceContainer}>
+                  <Text style={[styles.infoValue, styles.zeroBalanceText]}>
+                    {formatCurrency('0')}
+                  </Text>
+                  <Text style={styles.zeroBalanceLabel}>Sem saldo disponível</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -471,5 +479,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#10B981',
     fontWeight: '500',
+  },
+  zeroBalanceContainer: {
+    alignItems: 'flex-end',
+  },
+  zeroBalanceText: {
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  zeroBalanceLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 });
