@@ -262,8 +262,15 @@ export class PaymentRepository {
 
       // Aplicar filtros de pagamento
       if (status) {
-        countQuery = countQuery.eq('status', status);
-        dataQuery = dataQuery.eq('status', status);
+        if (status === 'pending') {
+          // Para status 'pending', excluir pagamentos atrasados
+          const today = new Date().toISOString().split('T')[0];
+          countQuery = countQuery.eq('status', status).gte('due_date', today);
+          dataQuery = dataQuery.eq('status', status).gte('due_date', today);
+        } else {
+          countQuery = countQuery.eq('status', status);
+          dataQuery = dataQuery.eq('status', status);
+        }
       }
 
       if (contractId) {
@@ -588,7 +595,15 @@ export class PaymentRepository {
           tax_id
         } = filters;
 
-        if (status) query = query.eq('status', status);
+        if (status) {
+          if (status === 'pending') {
+            // Para status 'pending', excluir pagamentos atrasados
+            const today = new Date().toISOString().split('T')[0];
+            query = query.eq('status', status).gte('due_date', today);
+          } else {
+            query = query.eq('status', status);
+          }
+        }
         if (contractId) query = query.eq('contract_id', contractId);
         if (due_date_from) query = query.gte('due_date', due_date_from);
         if (due_date_to) query = query.lte('due_date', due_date_to);
@@ -721,8 +736,15 @@ export class PaymentRepository {
 
       // Aplicar filtros
       if (status) {
-        countQuery = countQuery.eq('status', status);
-        dataQuery = dataQuery.eq('status', status);
+        if (status === 'pending') {
+          // Para status 'pending', excluir pagamentos atrasados
+          const today = new Date().toISOString().split('T')[0];
+          countQuery = countQuery.eq('status', status).gte('due_date', today);
+          dataQuery = dataQuery.eq('status', status).gte('due_date', today);
+        } else {
+          countQuery = countQuery.eq('status', status);
+          dataQuery = dataQuery.eq('status', status);
+        }
       }
 
       if (search) {
