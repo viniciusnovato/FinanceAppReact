@@ -76,11 +76,12 @@ export class DashboardService {
           .select('*', { count: 'exact', head: true })
           .eq('status', 'pending'),
         
-        // Pagamentos em atraso
+        // Pagamentos em atraso (pending com data vencida)
         supabase
           .from('payments')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'overdue'),
+          .eq('status', 'pending')
+          .lt('due_date', new Date().toISOString().split('T')[0]),
         
         // Receita mensal
         this.getMonthlyRevenue(),
