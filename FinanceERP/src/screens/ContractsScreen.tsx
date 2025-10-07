@@ -214,6 +214,7 @@ const ContractsScreen: React.FC = () => {
        });
      }
 
+    console.log('Final filtered contracts count:', filtered.length);
     return filtered;
   }, [searchQuery, route.params?.clientId, advancedFilters]);
 

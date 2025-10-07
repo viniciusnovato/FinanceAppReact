@@ -229,9 +229,14 @@ const ClientsScreen: React.FC = () => {
   };
 
   const handleViewClientContracts = (client: Client) => {
+    // Use only first name or construct full name properly handling null values
+    const clientName = client.last_name 
+      ? `${client.first_name} ${client.last_name}`.trim()
+      : client.first_name || '';
+    
     navigation.navigate('Contracts', {
       clientId: client.id,
-      clientName: `${client.first_name} ${client.last_name}`
+      clientName: clientName
     });
   };
 
