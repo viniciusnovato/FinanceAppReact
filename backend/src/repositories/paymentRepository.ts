@@ -741,6 +741,11 @@ export class PaymentRepository {
           const today = new Date().toISOString().split('T')[0];
           countQuery = countQuery.eq('status', status).gte('due_date', today);
           dataQuery = dataQuery.eq('status', status).gte('due_date', today);
+        } else if (status === 'overdue') {
+          // Para status 'overdue', buscar pagamentos 'pending' com data de vencimento passada
+          const today = new Date().toISOString().split('T')[0];
+          countQuery = countQuery.eq('status', 'pending').lt('due_date', today);
+          dataQuery = dataQuery.eq('status', 'pending').lt('due_date', today);
         } else {
           countQuery = countQuery.eq('status', status);
           dataQuery = dataQuery.eq('status', status);
