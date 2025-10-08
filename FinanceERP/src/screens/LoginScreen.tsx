@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -15,6 +16,11 @@ import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Card from '../components/common/Card';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+
+type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
 interface LoginFormData {
   email: string;
@@ -35,6 +41,7 @@ const loginSchema = yup.object().shape({
 const LoginScreen: React.FC = () => {
   const { login, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigation = useNavigation<LoginScreenNavigationProp>();
 
   const {
     control,
@@ -114,6 +121,13 @@ const LoginScreen: React.FC = () => {
               disabled={isSubmitting || isLoading}
               style={styles.loginButton}
             />
+
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={styles.forgotPasswordText}>Esqueceu sua senha?</Text>
+            </TouchableOpacity>
           </Card>
         </View>
       </ScrollView>
@@ -152,6 +166,15 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 8,
+  },
+  forgotPasswordButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  forgotPasswordText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

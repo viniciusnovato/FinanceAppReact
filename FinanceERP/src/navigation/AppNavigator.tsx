@@ -9,6 +9,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ClientsScreen from '../screens/ClientsScreen';
 import ContractsScreen from '../screens/ContractsScreen';
 import PaymentsScreen from '../screens/PaymentsScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 
 // Navigation types
 export type RootStackParamList = {
@@ -18,6 +19,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
   Login: undefined;
+  ForgotPassword: undefined;
 };
 
 export type MainStackParamList = {
@@ -35,6 +37,7 @@ const AuthNavigator = () => {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </AuthStack.Navigator>
   );
 };

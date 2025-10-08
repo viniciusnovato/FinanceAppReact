@@ -69,4 +69,42 @@ export class AuthController {
       next(error);
     }
   };
+
+  forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        res.status(400).json({ error: 'Email é obrigatório' });
+        return;
+      }
+
+      const result = await this.authService.forgotPassword(email);
+      
+      res.status(200).json({
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        res.status(400).json({ error: 'Token e nova senha são obrigatórios' });
+        return;
+      }
+
+      const result = await this.authService.resetPassword(token, newPassword);
+      
+      res.status(200).json({
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

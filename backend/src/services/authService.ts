@@ -102,4 +102,57 @@ export class AuthService {
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    try {
+      console.log('=== FORGOT PASSWORD ATTEMPT ===');
+      console.log('Email:', email);
+      
+      // Use Supabase Auth to send password reset email
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'http://localhost:8081/reset-password', // Frontend URL for password reset
+      });
+
+      if (error) {
+        console.log('Password reset error:', error);
+        throw createError('Erro ao enviar email de recuperação', 400);
+      }
+
+      console.log('Password reset email sent successfully');
+      
+      return {
+        message: 'Email de recuperação enviado com sucesso'
+      };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw error;
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      console.log('=== RESET PASSWORD ATTEMPT ===');
+      console.log('Token length:', token.length);
+      console.log('New password length:', newPassword.length);
+      
+      // Use Supabase Auth to update password with token
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        console.log('Password reset error:', error);
+        throw createError('Token inválido ou expirado', 400);
+      }
+
+      console.log('Password reset successful');
+      
+      return {
+        message: 'Senha alterada com sucesso'
+      };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  }
 }
