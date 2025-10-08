@@ -23,7 +23,8 @@ interface ManualPaymentModalProps {
     paid_amount?: number;
   } | null;
   contractPositiveBalance?: number;
-  onConfirm: (paymentAmount: number) => Promise<void>;
+  contractNegativeBalance?: number;
+  onConfirm: (paymentAmount: number, usePositiveBalance?: number) => Promise<void>;
 }
 
 export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
@@ -31,9 +32,11 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
   onClose,
   payment,
   contractPositiveBalance = 0,
+  contractNegativeBalance = 0,
   onConfirm
 }) => {
   const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [usePositiveBalance, setUsePositiveBalance] = useState<string>('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when modal opens - MUST be called before any early returns
@@ -41,6 +44,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
     if (visible) {
       console.log('🔍 Modal ficou visível, resetando form');
       setPaymentAmount('');
+      setUsePositiveBalance('0');
     }
   }, [visible]);
 
@@ -79,15 +83,26 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
 
   const handleSubmit = async () => {
     const amount = parseFloat(paymentAmount);
+    const positiveBalanceToUse = parseFloat(usePositiveBalance) || 0;
     
     if (isNaN(amount) || amount <= 0) {
       Alert.alert('Erro', 'Por favor, insira um valor válido');
       return;
     }
 
+    if (positiveBalanceToUse < 0) {
+      Alert.alert('Erro', 'O valor do saldo positivo não pode ser negativo');
+      return;
+    }
+
+    if (positiveBalanceToUse > contractPositiveBalance) {
+      Alert.alert('Erro', `Saldo positivo insuficiente. Disponível: ${formatCurrency(contractPositiveBalance)}`);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      await onConfirm(amount);
+      await onConfirm(amount, positiveBalanceToUse);
     } catch (error) {
       Alert.alert('Erro', 'Falha ao processar pagamento');
     } finally {
@@ -102,14 +117,17 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
   const paidAmount = payment.paid_amount || 0;
   const remainingAmount = payment.amount - paidAmount;
   const inputAmount = parseFloat(paymentAmount) || 0;
+  const positiveBalanceToUse = parseFloat(usePositiveBalance) || 0;
   
-  // Nova lógica: descontar do saldo positivo antes de calcular excesso ou nova parcela
-  const availableBalance = contractPositiveBalance || 0;
-  const amountAfterBalance = Math.max(0, remainingAmount - availableBalance);
-  const usedBalance = Math.min(availableBalance, remainingAmount);
+  // Calcular valor final da parcela após aplicar saldo positivo
+  const finalInstallmentValue = Math.max(0, remainingAmount - positiveBalanceToUse);
   
-  const excessAmount = inputAmount > amountAfterBalance ? inputAmount - amountAfterBalance : 0;
-  const newRemainingAmount = Math.max(0, amountAfterBalance - inputAmount);
+  // Calcular excesso se o valor pago for maior que o valor final
+  const excessAmount = inputAmount > finalInstallmentValue ? inputAmount - finalInstallmentValue : 0;
+
+  // Calcular quanto do excesso será usado para abater o saldo devedor
+  const negativeBalanceAbatement = Math.min(excessAmount, contractNegativeBalance);
+  const finalExcessAmount = excessAmount - negativeBalanceAbatement;
 
   console.log('🔍 Modal vai renderizar com visible:', visible);
 
@@ -179,27 +197,40 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
           </View>
 
           {/* Saldo Positivo do Contrato */}
-          {availableBalance > 0 && (
+          {contractPositiveBalance > 0 && (
             <View style={styles.infoRow}>
               <View style={styles.infoLabelContainer}>
                 <Ionicons name="wallet-outline" size={14} color="#059669" />
                 <Text style={styles.infoLabel}>Saldo Positivo Disponível:</Text>
               </View>
               <Text style={[styles.infoValue, { color: '#059669', fontWeight: '600' }]}>
-                {formatCurrency(availableBalance)}
+                {formatCurrency(contractPositiveBalance)}
               </Text>
             </View>
           )}
 
-          {/* Valor Efetivo a Pagar (após desconto do saldo) */}
-          {availableBalance > 0 && (
+          {/* Saldo Negativo do Contrato */}
+          {contractNegativeBalance > 0 && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoLabelContainer}>
+                <Ionicons name="warning-outline" size={14} color="#dc2626" />
+                <Text style={styles.infoLabel}>Saldo Negativo:</Text>
+              </View>
+              <Text style={[styles.infoValue, { color: '#dc2626', fontWeight: '600' }]}>
+                -{formatCurrency(contractNegativeBalance)}
+              </Text>
+            </View>
+          )}
+
+          {/* Valor Final da Parcela (após aplicar saldo positivo) */}
+          {positiveBalanceToUse > 0 && (
             <View style={styles.infoRow}>
               <View style={styles.infoLabelContainer}>
                 <Ionicons name="calculator-outline" size={14} color="#3B82F6" />
-                <Text style={styles.infoLabel}>Valor Efetivo a Pagar:</Text>
+                <Text style={styles.infoLabel}>Valor Final da Parcela:</Text>
               </View>
               <Text style={[styles.infoValue, { color: '#3B82F6', fontWeight: '600' }]}>
-                {formatCurrency(amountAfterBalance)}
+                {formatCurrency(finalInstallmentValue)}
               </Text>
             </View>
           )}
@@ -223,16 +254,31 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
             />
           </View>
           
+          {/* Campo para Uso do Saldo Positivo */}
+          {contractPositiveBalance > 0 && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.currencySymbol}>€</Text>
+              <TextInput
+                value={usePositiveBalance}
+                onChangeText={setUsePositiveBalance}
+                placeholder="0,00"
+                keyboardType="numeric"
+                style={styles.enhancedInput}
+              />
+              <Text style={styles.balanceLabel}>do saldo positivo</Text>
+            </View>
+          )}
+          
           {/* Botões de Valor Rápido */}
           <View style={styles.quickAmountButtons}>
             <TouchableOpacity
               style={styles.quickButton}
-              onPress={() => handleQuickAmount(amountAfterBalance)}
+              onPress={() => handleQuickAmount(finalInstallmentValue)}
             >
               <View style={styles.quickButtonContent}>
                 <Ionicons name="checkmark-circle-outline" size={14} color="#3B82F6" />
                 <Text style={styles.quickButtonText}>
-                  Efetivo: {formatCurrency(amountAfterBalance)}
+                  Final: {formatCurrency(finalInstallmentValue)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -270,7 +316,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
             </View>
 
             {/* Mostrar uso do saldo positivo */}
-            {usedBalance > 0 && (
+            {positiveBalanceToUse > 0 && (
               <View style={[styles.calculationRow, { backgroundColor: '#e8f5e8', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginVertical: 5 }]}>
                 <View style={styles.infoLabelContainer}>
                   <Ionicons name="wallet-outline" size={14} color="#059669" />
@@ -279,12 +325,26 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                   </Text>
                 </View>
                 <Text style={[styles.calculationValue, { color: '#059669' }]}>
-                  -{formatCurrency(usedBalance)}
+                  -{formatCurrency(positiveBalanceToUse)}
                 </Text>
               </View>
             )}
             
-            {excessAmount > 0 && (
+            {negativeBalanceAbatement > 0 && (
+              <View style={[styles.calculationRow, { backgroundColor: '#fff3cd', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginVertical: 5 }]}>
+                <View style={styles.infoLabelContainer}>
+                  <Ionicons name="trending-up-outline" size={14} color="#856404" />
+                  <Text style={[styles.calculationLabel, { color: '#856404' }]}>
+                    Abatimento do Saldo Devedor:
+                  </Text>
+                </View>
+                <Text style={[styles.calculationValue, { color: '#856404', fontWeight: '700' }]}>
+                  -{formatCurrency(negativeBalanceAbatement)}
+                </Text>
+              </View>
+            )}
+            
+            {finalExcessAmount > 0 && (
               <View style={[styles.calculationRow, styles.excessRow]}>
                 <View style={styles.infoLabelContainer}>
                   <Ionicons name="trophy-outline" size={14} color="#059669" />
@@ -293,7 +353,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                   </Text>
                 </View>
                 <Text style={[styles.calculationValue, styles.excessValue]}>
-                  +{formatCurrency(excessAmount)}
+                  +{formatCurrency(finalExcessAmount)}
                 </Text>
               </View>
             )}
@@ -305,12 +365,27 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                   size={14} 
                   color="#dc2626" 
                 />
-                {' '}Novo Saldo Restante:
+                {' '}Valor Restante da Parcela:
               </Text>
               <Text style={[styles.calculationValue, styles.newRemainingValue]}>
-                {formatCurrency(newRemainingAmount)}
+                {formatCurrency(Math.max(0, finalInstallmentValue - inputAmount))}
               </Text>
             </View>
+
+            {/* Mostrar informação sobre saldo devedor quando pagamento é parcial */}
+            {inputAmount > 0 && inputAmount < finalInstallmentValue && (
+              <View style={[styles.calculationRow, { backgroundColor: '#fef2f2', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginVertical: 5 }]}>
+                <View style={styles.infoLabelContainer}>
+                  <Ionicons name="warning-outline" size={14} color="#dc2626" />
+                  <Text style={[styles.calculationLabel, { color: '#dc2626' }]}>
+                    Será adicionado ao saldo devedor:
+                  </Text>
+                </View>
+                <Text style={[styles.calculationValue, { color: '#dc2626', fontWeight: '700' }]}>
+                  +{formatCurrency(finalInstallmentValue - inputAmount)}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -598,5 +673,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  balanceLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
   },
 });

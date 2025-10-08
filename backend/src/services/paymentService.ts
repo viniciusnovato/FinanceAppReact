@@ -140,7 +140,11 @@ export class PaymentService {
     return this.paymentRepository.findOverduePayments();
   }
 
-  async markPaymentAsPaid(id: string): Promise<Payment> {
+  async markPaymentAsPaid(id: string): Promise<{
+    payment: Payment;
+    contractUpdated?: boolean;
+    message: string;
+  }> {
     const payment = await this.paymentRepository.findById(id);
     if (!payment) {
       throw createError('Payment not found', 404);
@@ -150,12 +154,75 @@ export class PaymentService {
       throw createError('Payment is already marked as paid', 400);
     }
 
-    const updatedPayment = await this.paymentRepository.markAsPaid(id);
+    // Buscar contrato para verificar saldos
+    const contract = await this.contractRepository.findById(payment.contract_id);
+    if (!contract) {
+      throw createError('Contract not found', 404);
+    }
+
+    const originalAmount = payment.amount;
+    const contractPositiveBalance = contract.positive_balance || 0;
+    const contractNegativeBalance = contract.negative_balance || 0;
+    
+    let finalAmount = originalAmount;
+    let contractUpdated = false;
+    let newPositiveBalance = contractPositiveBalance;
+    let newNegativeBalance = contractNegativeBalance;
+    let message = 'Payment marked as paid successfully';
+
+    // Aplicar lógica de pagamento automático conforme especificado no documento
+    
+    // 1. Se há saldo negativo (dívida), primeiro quitar a dívida
+    if (contractNegativeBalance > 0) {
+      if (originalAmount >= contractNegativeBalance) {
+        // Pagamento cobre toda a dívida
+        finalAmount = originalAmount - contractNegativeBalance;
+        newNegativeBalance = 0;
+        contractUpdated = true;
+        message = `Payment processed. Debt of R$ ${contractNegativeBalance.toFixed(2)} cleared.`;
+        
+        // Se ainda sobrar valor após quitar a dívida, adicionar ao saldo positivo
+        if (finalAmount > 0) {
+          newPositiveBalance = contractPositiveBalance + finalAmount;
+          message += ` Remaining R$ ${finalAmount.toFixed(2)} added to positive balance.`;
+        }
+      } else {
+        // Pagamento não cobre toda a dívida
+        newNegativeBalance = contractNegativeBalance - originalAmount;
+        finalAmount = 0;
+        contractUpdated = true;
+        message = `Payment applied to debt. Remaining debt: R$ ${newNegativeBalance.toFixed(2)}`;
+      }
+    } else {
+      // 2. Se não há dívida, adicionar valor ao saldo positivo
+      newPositiveBalance = contractPositiveBalance + originalAmount;
+      contractUpdated = true;
+      message = `Payment processed. R$ ${originalAmount.toFixed(2)} added to positive balance. New balance: R$ ${newPositiveBalance.toFixed(2)}`;
+    }
+
+    // Atualizar saldos do contrato se necessário
+    if (contractUpdated) {
+      await this.contractRepository.update(payment.contract_id, {
+        positive_balance: newPositiveBalance,
+        negative_balance: newNegativeBalance
+      });
+    }
+
+    // Marcar pagamento como pago com o valor original
+    const updatedPayment = await this.paymentRepository.update(id, {
+      status: 'paid',
+      paid_amount: originalAmount
+    });
+
     if (!updatedPayment) {
       throw createError('Failed to mark payment as paid', 500);
     }
 
-    return updatedPayment;
+    return {
+      payment: updatedPayment,
+      contractUpdated,
+      message
+    };
   }
 
   async updateOverduePayments(): Promise<void> {
@@ -197,7 +264,7 @@ export class PaymentService {
     };
   }
 
-  async processManualPayment(paymentId: string, amount: number): Promise<{
+  async processManualPayment(paymentId: string, amount: number, usePositiveBalance: number = 0): Promise<{
     payment: Payment;
     newPayment?: Payment;
     contractUpdated?: boolean;
@@ -212,7 +279,7 @@ export class PaymentService {
       throw createError('Payment is already marked as paid', 400);
     }
 
-    // Buscar contrato para verificar saldo positivo
+    // Buscar contrato para verificar saldos
     const contract = await this.contractRepository.findById(payment.contract_id);
     if (!contract) {
       throw createError('Contract not found', 404);
@@ -220,99 +287,148 @@ export class PaymentService {
 
     const originalAmount = payment.amount;
     const contractPositiveBalance = contract.positive_balance || 0;
+    const contractNegativeBalance = contract.negative_balance || 0;
     
-    // Caso 1: Pagamento exato
-    if (amount === originalAmount) {
+    // Validar se o valor de saldo positivo a ser usado é válido
+    if (usePositiveBalance > contractPositiveBalance) {
+      throw createError(`Cannot use R$ ${usePositiveBalance.toFixed(2)} from positive balance. Available: R$ ${contractPositiveBalance.toFixed(2)}`, 400);
+    }
+
+    if (usePositiveBalance < 0) {
+      throw createError('Positive balance usage cannot be negative', 400);
+    }
+
+    // Calcular valor final da parcela após aplicar saldo positivo
+    const finalInstallmentValue = Math.max(0, originalAmount - usePositiveBalance);
+    
+    // Validar se o valor pago é positivo
+    if (amount <= 0) {
+      throw createError('Payment amount must be greater than zero', 400);
+    }
+
+    let contractUpdated = false;
+    let newPositiveBalance = contractPositiveBalance - usePositiveBalance;
+    let newNegativeBalance = contractNegativeBalance;
+    let message = '';
+    
+    // Caso 1: Pagamento parcial (menor que o valor da parcela)
+    if (amount < finalInstallmentValue) {
+      const remainingDebt = finalInstallmentValue - amount;
+      
+      // Atualizar pagamento como pago com valor parcial
       const updatedPayment = await this.paymentRepository.update(paymentId, {
         status: 'paid',
-        paid_amount: amount
+        paid_amount: amount + usePositiveBalance // Valor efetivamente pago + saldo usado
       });
+      
+      // Adicionar valor restante ao saldo negativo do contrato
+      newNegativeBalance = contractNegativeBalance + remainingDebt;
+      
+      // Atualizar saldos do contrato
+      await this.contractRepository.update(payment.contract_id, {
+        positive_balance: newPositiveBalance,
+        negative_balance: newNegativeBalance
+      });
+      
+      contractUpdated = true;
+      message = `Partial payment processed. R$ ${amount.toFixed(2)} paid`;
+      
+      if (usePositiveBalance > 0) {
+        message += ` + R$ ${usePositiveBalance.toFixed(2)} from positive balance`;
+      }
+      
+      message += `. Remaining debt of R$ ${remainingDebt.toFixed(2)} added to contract balance. Total debt: R$ ${newNegativeBalance.toFixed(2)}`;
       
       return {
         payment: updatedPayment!,
-        message: 'Payment completed successfully'
+        contractUpdated,
+        message
       };
     }
     
-    // Caso 2: Pagamento parcial
-    if (amount < originalAmount) {
-      let remainingAmount = originalAmount - amount;
-      let contractUpdated = false;
-      let newPositiveBalance = contractPositiveBalance;
-      let message = '';
+    // Caso 2: Pagamento exato (após aplicar saldo positivo)
+    if (amount === finalInstallmentValue) {
+      // Atualizar pagamento como pago
+      const updatedPayment = await this.paymentRepository.update(paymentId, {
+        status: 'paid',
+        paid_amount: originalAmount // Valor original da parcela
+      });
       
-      // Verificar se há saldo positivo para abater do valor restante
-      if (contractPositiveBalance > 0) {
-        if (contractPositiveBalance >= remainingAmount) {
-          // Saldo positivo cobre completamente o valor restante
-          newPositiveBalance = contractPositiveBalance - remainingAmount;
-          remainingAmount = 0;
-          contractUpdated = true;
-          message = `Partial payment processed. Remaining amount (R$ ${(originalAmount - amount).toFixed(2)}) covered by contract positive balance. New balance: R$ ${newPositiveBalance.toFixed(2)}`;
-        } else {
-          // Saldo positivo cobre parcialmente o valor restante
-          remainingAmount = remainingAmount - contractPositiveBalance;
-          newPositiveBalance = 0;
-          contractUpdated = true;
-          message = `Partial payment processed. Contract positive balance (R$ ${contractPositiveBalance.toFixed(2)}) applied. New installment created for remaining amount: R$ ${remainingAmount.toFixed(2)}`;
-        }
-        
-        // Atualizar saldo positivo do contrato
+      // Atualizar saldo positivo do contrato se foi usado
+      if (usePositiveBalance > 0) {
         await this.contractRepository.update(payment.contract_id, {
           positive_balance: newPositiveBalance
         });
+        contractUpdated = true;
+        message = `Payment completed. Used R$ ${usePositiveBalance.toFixed(2)} from positive balance. New balance: R$ ${newPositiveBalance.toFixed(2)}`;
       } else {
-        message = `Partial payment processed. New installment created for remaining amount: R$ ${remainingAmount.toFixed(2)}`;
-      }
-      
-      // Atualizar pagamento atual como pago
-      const updatedPayment = await this.paymentRepository.update(paymentId, {
-        status: 'paid',
-        paid_amount: amount
-      });
-      
-      let newPayment = undefined;
-      
-      // Criar nova parcela apenas se ainda houver valor restante após aplicar o saldo positivo
-      if (remainingAmount > 0) {
-        newPayment = await this.paymentRepository.create({
-          contract_id: payment.contract_id,
-          amount: remainingAmount,
-          due_date: payment.due_date, // Mesma data de vencimento
-          status: 'pending',
-          payment_type: 'normalPayment',
-          paid_amount: 0
-        });
+        message = 'Payment completed successfully';
       }
       
       return {
         payment: updatedPayment!,
-        newPayment,
         contractUpdated,
         message
       };
     }
     
     // Caso 3: Pagamento excedente
-    if (amount > originalAmount) {
-      const excessAmount = amount - originalAmount;
+    if (amount > finalInstallmentValue) {
+      const excessAmount = amount - finalInstallmentValue;
       
-      // Atualizar pagamento atual como pago
+      // Atualizar pagamento como pago
       const updatedPayment = await this.paymentRepository.update(paymentId, {
         status: 'paid',
-        paid_amount: amount
+        paid_amount: originalAmount // Valor original da parcela
       });
       
-      // Atualizar positive_balance do contrato
-      const currentBalance = contract.positive_balance || 0;
+      // Primeiro aplicar o excesso para quitar dívidas (saldo negativo)
+      if (contractNegativeBalance > 0) {
+        if (excessAmount >= contractNegativeBalance) {
+          // Excesso cobre toda a dívida
+          const remainingExcess = excessAmount - contractNegativeBalance;
+          newNegativeBalance = 0;
+          newPositiveBalance += remainingExcess;
+          message = `Payment completed with excess. Debt of R$ ${contractNegativeBalance.toFixed(2)} cleared.`;
+          
+          if (remainingExcess > 0) {
+            message += ` Remaining R$ ${remainingExcess.toFixed(2)} added to positive balance.`;
+          }
+          
+          if (usePositiveBalance > 0) {
+            message += ` Used R$ ${usePositiveBalance.toFixed(2)} from previous positive balance.`;
+          }
+        } else {
+          // Excesso não cobre toda a dívida
+          newNegativeBalance = contractNegativeBalance - excessAmount;
+          message = `Payment completed with excess applied to debt. Remaining debt: R$ ${newNegativeBalance.toFixed(2)}`;
+          
+          if (usePositiveBalance > 0) {
+            message += ` Used R$ ${usePositiveBalance.toFixed(2)} from positive balance.`;
+          }
+        }
+      } else {
+        // Não há dívida, adicionar excesso ao saldo positivo
+        newPositiveBalance += excessAmount;
+        message = `Payment completed with excess. R$ ${excessAmount.toFixed(2)} added to positive balance.`;
+        
+        if (usePositiveBalance > 0) {
+          message += ` Used R$ ${usePositiveBalance.toFixed(2)} from previous positive balance.`;
+        }
+        
+        message += ` New balance: R$ ${newPositiveBalance.toFixed(2)}`;
+      }
+      
+      // Atualizar saldos do contrato
       await this.contractRepository.update(payment.contract_id, {
-        positive_balance: currentBalance + excessAmount
+        positive_balance: newPositiveBalance,
+        negative_balance: newNegativeBalance
       });
       
       return {
         payment: updatedPayment!,
         contractUpdated: true,
-        message: `Payment completed with excess amount. R$ ${excessAmount.toFixed(2)} added to contract balance`
+        message
       };
     }
 

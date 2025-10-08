@@ -906,19 +906,24 @@ const PaymentsScreen: React.FC = () => {
         visible={showManualPaymentModal}
         payment={selectedPaymentForManual}
         contractPositiveBalance={selectedPaymentForManual?.contract?.positive_balance || 0}
+        contractNegativeBalance={selectedPaymentForManual?.contract?.negative_balance || 0}
         onClose={() => {
           console.log('🔍 Fechando modal de pagamento manual');
           setShowManualPaymentModal(false);
           setSelectedPaymentForManual(null);
         }}
-        onConfirm={async (paymentAmount) => {
-          console.log('🔍 Confirmando pagamento manual:', paymentAmount);
+        onConfirm={async (amount: number, usePositiveBalance?: number) => {
+          console.log('🔍 Confirmando pagamento manual:', { amount, usePositiveBalance });
           if (!selectedPaymentForManual) return;
 
           try {
             setIsLoading(true);
             
-            const response = await ApiService.processManualPayment(selectedPaymentForManual.id, paymentAmount);
+            const response = await ApiService.processManualPayment(
+              selectedPaymentForManual.id, 
+              amount, 
+              usePositiveBalance
+            );
             
             if (response.success) {
               Alert.alert('Sucesso', response.data.message);

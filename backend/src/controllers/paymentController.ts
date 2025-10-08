@@ -229,12 +229,12 @@ export class PaymentController {
   markPaymentAsPaid = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const payment = await this.paymentService.markPaymentAsPaid(id);
+      const result = await this.paymentService.markPaymentAsPaid(id);
       
       res.status(200).json({
         success: true,
-        message: 'Payment marked as paid successfully',
-        data: payment,
+        message: result.message,
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -258,7 +258,7 @@ export class PaymentController {
   processManualPayment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const { amount } = req.body;
+      const { amount, usePositiveBalance } = req.body;
       
       if (!amount || amount <= 0) {
         res.status(400).json({
@@ -268,11 +268,24 @@ export class PaymentController {
         return;
       }
 
-      const result = await this.paymentService.processManualPayment(id, amount);
+      // Validar usePositiveBalance se fornecido
+      if (usePositiveBalance !== undefined && usePositiveBalance < 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Positive balance usage cannot be negative',
+        });
+        return;
+      }
+
+      const result = await this.paymentService.processManualPayment(
+        id, 
+        amount, 
+        usePositiveBalance || 0
+      );
       
       res.status(200).json({
         success: true,
-        message: 'Manual payment processed successfully',
+        message: result.message,
         data: result,
       });
     } catch (error) {
