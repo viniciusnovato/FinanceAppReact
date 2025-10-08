@@ -20,6 +20,7 @@ interface ContractDetails {
   start_date: string;
   end_date: string;
   positive_balance?: number;
+  negative_balance?: number;
   client: {
     id: string;
     first_name: string;
@@ -272,6 +273,22 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                     {formatCurrency('0')}
                   </Text>
                   <Text style={styles.zeroBalanceLabel}>Sem saldo disponível</Text>
+                </View>
+              )}
+            </View>
+            {/* Saldo Negativo */}
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Saldo Negativo:</Text>
+              {contractDetails.negative_balance && contractDetails.negative_balance > 0 ? (
+                <Text style={[styles.infoValue, { color: '#EF4444', fontWeight: '700' }]}>
+                  {formatCurrency(contractDetails.negative_balance.toString())}
+                </Text>
+              ) : (
+                <View style={styles.zeroBalanceContainer}>
+                  <Text style={[styles.infoValue, styles.zeroBalanceText]}>
+                    {formatCurrency('0')}
+                  </Text>
+                  <Text style={styles.zeroBalanceLabel}>Sem saldo negativo</Text>
                 </View>
               )}
             </View>

@@ -213,7 +213,7 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.currencySymbol}>R$</Text>
+            <Text style={styles.currencySymbol}>€</Text>
             <TextInput
               value={paymentAmount}
               onChangeText={setPaymentAmount}

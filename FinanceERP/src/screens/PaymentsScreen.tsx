@@ -732,18 +732,21 @@ const PaymentsScreen: React.FC = () => {
       sortable: false,
       render: (payment: Payment) => (
         <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.moneyButton]}
-            onPress={() => {
-              console.log('🔍 Clicou no ícone de dinheiro para pagamento:', payment.id);
-              console.log('🔍 Payment data:', payment);
-              setSelectedPaymentForManual(payment);
-              setShowManualPaymentModal(true);
-              console.log('🔍 Modal deve estar visível agora');
-            }}
-          >
-            <Ionicons name="cash" size={16} color="#F59E0B" />
-          </TouchableOpacity>
+          {/* Botão de pagamento manual - só aparece se a parcela não estiver completamente paga */}
+          {payment.status !== 'paid' && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.moneyButton]}
+              onPress={() => {
+                console.log('🔍 Clicou no ícone de dinheiro para pagamento:', payment.id);
+                console.log('🔍 Payment data:', payment);
+                setSelectedPaymentForManual(payment);
+                setShowManualPaymentModal(true);
+                console.log('🔍 Modal deve estar visível agora');
+              }}
+            >
+              <Ionicons name="cash" size={16} color="#F59E0B" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.actionButton, styles.editButton]}
             onPress={() => handleEditPayment(payment)}
