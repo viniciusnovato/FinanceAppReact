@@ -579,9 +579,9 @@ const PaymentsScreen: React.FC = () => {
     return payment.status;
   };
 
-  const renderStatusBadge = (payment: Payment, status?: string) => {
+  const renderStatusBadge = (payment: Payment) => {
     // Calcular o status real do pagamento
-    const realStatus = status || getPaymentStatus(payment);
+    const realStatus = getPaymentStatus(payment);
     
     return (
       <View style={[
@@ -693,7 +693,7 @@ const PaymentsScreen: React.FC = () => {
       title: 'Status',
       width: isTablet ? 100 : 80,
       sortable: true,
-      render: (payment: Payment) => renderStatusBadge(payment, payment.status),
+      render: (payment: Payment) => renderStatusBadge(payment),
     },
     {
       key: 'paid',
