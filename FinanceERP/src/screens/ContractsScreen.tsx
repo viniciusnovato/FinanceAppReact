@@ -85,12 +85,8 @@ const ContractsScreen: React.FC = () => {
   // Removido useEffect que carregava todos os contratos automaticamente
   // Agora só carrega quando há clientId ou quando não há parâmetros específicos
 
-  // Set initial search query if coming from client selection
-  useEffect(() => {
-    if (route.params?.clientName && !searchQuery) {
-      setSearchQuery(route.params.clientName);
-    }
-  }, [route.params?.clientName]);
+  // Removed: Setting search query with client name as it interferes with contract title search
+  // The client filter is already handled by the clientId parameter
 
   // Filter contracts based on search query, client filter, and advanced filters
   const applyFilters = useCallback(async (searchQuery: string, clientId?: string, advancedFilters: ContractAdvancedFiltersData = {}) => {
