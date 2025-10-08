@@ -146,7 +146,7 @@ export const exportPaymentsToCSV = (payments: Payment[]): void => {
       `"${payment.id || ''}"`,
       `"${payment.contract_id || ''}"`,
       `"${payment.contract?.contract_number || ''}"`,
-      `"${payment.contract?.client ? `${payment.contract.client.first_name} ${payment.contract.client.last_name}` : ''}"`,
+      `"${payment.contract?.client ? payment.contract.client.first_name : ''}"`,
       `"${payment.amount || 0}"`,
       `"${payment.due_date || ''}"`,
       `"${payment.paid_date || ''}"`,
