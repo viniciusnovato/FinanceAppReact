@@ -25,6 +25,7 @@ import ContractForm from '../components/forms/ContractForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ContractDetailsModal } from '../components/ContractDetailsModal';
 import { MainStackParamList } from '../navigation/AppNavigator';
+import { exportContractsToCSV } from '../utils/csvExport';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -292,6 +293,25 @@ const ContractsScreen: React.FC = () => {
   const handleCreateContract = () => {
     setEditingContract(null);
     setShowContractForm(true);
+  };
+
+  const handleExportCSV = () => {
+    try {
+      if (!filteredContracts || filteredContracts.length === 0) {
+        Alert.alert('Aviso', 'Não há dados de contratos para exportar.');
+        return;
+      }
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `contratos_${timestamp}`;
+      
+      exportContractsToCSV(filteredContracts);
+      
+      Alert.alert('Sucesso', 'Arquivo CSV exportado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      Alert.alert('Erro', 'Falha ao exportar dados para CSV.');
+    }
   };
 
   const handleEditContract = (contract: Contract) => {
@@ -614,11 +634,29 @@ const ContractsScreen: React.FC = () => {
                 </Text>
               )}
             </View>
-            <Button
-              title="Novo Contrato"
-              onPress={handleCreateContract}
-              variant="primary"
-            />
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.exportButton,
+                  (!filteredContracts || filteredContracts.length === 0) && { opacity: 0.5 }
+                ]}
+                onPress={handleExportCSV}
+                disabled={!filteredContracts || filteredContracts.length === 0}
+              >
+                <Ionicons name="download" size={16} color="#059669" />
+                <Text style={[
+                  styles.exportButtonText,
+                  (!filteredContracts || filteredContracts.length === 0) && styles.exportButtonTextDisabled
+                ]}>
+                  Exportar CSV
+                </Text>
+              </TouchableOpacity>
+              <Button
+                title="Novo Contrato"
+                onPress={handleCreateContract}
+                variant="primary"
+              />
+            </View>
           </View>
 
           <View style={styles.searchContainer}>
@@ -895,6 +933,30 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF6B35',
     marginLeft: 8,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  exportButtonText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  exportButtonTextDisabled: {
+    color: '#9CA3AF',
   },
 });
 

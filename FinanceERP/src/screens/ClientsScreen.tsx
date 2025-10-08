@@ -21,6 +21,7 @@ import ClientForm from '../components/forms/ClientForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import ClientAdvancedFilters from '../components/filters/ClientAdvancedFilters';
 import { MainStackParamList } from '../navigation/AppNavigator';
+import { exportClientsToCSV } from '../utils/csvExport';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -253,6 +254,28 @@ const ClientsScreen: React.FC = () => {
     setCurrentPage(1);
   };
 
+  // Função para exportar clientes em CSV
+  const handleExportCSV = () => {
+    if (filteredClients.length === 0) {
+      Alert.alert('Aviso', 'Não há dados para exportar.');
+      return;
+    }
+
+    try {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `clientes_${timestamp}.csv`;
+      exportClientsToCSV(filteredClients, filename);
+      
+      Alert.alert(
+        'Sucesso', 
+        `Exportação concluída! ${filteredClients.length} clientes exportados.`
+      );
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      Alert.alert('Erro', 'Não foi possível exportar os dados. Tente novamente.');
+    }
+  };
+
   // Pagination functions
   const getCurrentPageData = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -447,11 +470,23 @@ const ClientsScreen: React.FC = () => {
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>Clientes</Text>
-            <Button
-              title="Novo Cliente"
-              onPress={handleCreateClient}
-              variant="primary"
-            />
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.exportButton}
+                onPress={handleExportCSV}
+                disabled={filteredClients.length === 0}
+              >
+                <Ionicons name="download-outline" size={20} color={filteredClients.length === 0 ? '#9CA3AF' : '#059669'} />
+                <Text style={[styles.exportButtonText, filteredClients.length === 0 && styles.exportButtonTextDisabled]}>
+                  Exportar CSV
+                </Text>
+              </TouchableOpacity>
+              <Button
+                title="Novo Cliente"
+                onPress={handleCreateClient}
+                variant="primary"
+              />
+            </View>
           </View>
 
           <View style={styles.searchContainer}>
@@ -669,6 +704,30 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF6B35',
     marginLeft: 8,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  exportButtonText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  exportButtonTextDisabled: {
+    color: '#9CA3AF',
   },
 });
 

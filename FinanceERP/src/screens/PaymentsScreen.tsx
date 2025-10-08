@@ -25,6 +25,7 @@ import AdvancedFilters from '../components/filters/AdvancedFilters';
 import FilterChips from '../components/filters/FilterChips';
 import { ManualPaymentModal } from '../components/ManualPaymentModal';
 import { MainStackParamList } from '../navigation/AppNavigator';
+import { exportPaymentsToCSV } from '../utils/csvExport';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth > 768;
@@ -119,6 +120,12 @@ const PaymentsScreen: React.FC = () => {
             }
           } else {
             filters[key] = advancedFilters[key];
+            if (key === 'payment_type') {
+              console.log('🔍 Setting payment_type filter:', advancedFilters[key]);
+            }
+            if (key === 'payment_method') {
+              console.log('💳 Setting payment_method filter:', advancedFilters[key]);
+            }
           }
         }
       });
@@ -346,6 +353,91 @@ const PaymentsScreen: React.FC = () => {
     setShowPaymentForm(true);
   };
 
+  const handleExportCSV = async () => {
+    try {
+      if (totalItems === 0) {
+        Alert.alert('Aviso', 'Não há dados de pagamentos para exportar.');
+        return;
+      }
+
+      // Preparar filtros para buscar todos os dados
+      const filters: any = {};
+      
+      if (activeFilter !== 'all') {
+        filters.status = activeFilter;
+      }
+      
+      if (searchQuery.trim()) {
+        filters.search = searchQuery.trim();
+      }
+
+      // Merge advanced filters with field name mapping
+      Object.keys(advancedFilters).forEach(key => {
+        if (advancedFilters[key] !== undefined && advancedFilters[key] !== '') {
+          if (key === 'amount_from') {
+            const numericValue = parseFloat(advancedFilters[key].replace(',', '.'));
+            if (!isNaN(numericValue)) {
+              filters.amount_min = numericValue;
+            }
+          } else if (key === 'amount_to') {
+            const numericValue = parseFloat(advancedFilters[key].replace(',', '.'));
+            if (!isNaN(numericValue)) {
+              filters.amount_max = numericValue;
+            }
+          } else {
+            filters[key] = advancedFilters[key];
+          }
+        }
+      });
+
+      // Convert date filters to API format
+      const filtersWithConvertedDates = convertDateFiltersToApiFormat(filters);
+
+      // Buscar todos os pagamentos filtrados (sem paginação)
+      let allPayments: Payment[] = [];
+      
+      if (contractId) {
+        // Para contrato específico, buscar todos os pagamentos
+        const response = await ApiService.getPaymentsByContractPaginated(
+          contractId, 
+          1, 
+          totalItems, // Buscar todos os itens de uma vez
+          filtersWithConvertedDates
+        );
+        
+        if (response.success && response.data) {
+          allPayments = response.data.data;
+        }
+      } else {
+        // Para todos os pagamentos, buscar todos
+        const response = await ApiService.getPaymentsPaginated(
+          1, 
+          totalItems, // Buscar todos os itens de uma vez
+          filtersWithConvertedDates
+        );
+        
+        if (response.success && response.data) {
+          allPayments = response.data.data;
+        }
+      }
+
+      if (allPayments.length === 0) {
+        Alert.alert('Aviso', 'Não foi possível obter os dados para exportação.');
+        return;
+      }
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `pagamentos_${timestamp}`;
+      
+      exportPaymentsToCSV(allPayments);
+      
+      Alert.alert('Sucesso', `Arquivo CSV exportado com sucesso! (${allPayments.length} registros)`);
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      Alert.alert('Erro', 'Falha ao exportar dados para CSV.');
+    }
+  };
+
   const handleEditPayment = (payment: Payment) => {
     setEditingPayment(payment);
     setShowPaymentForm(true);
@@ -487,9 +579,9 @@ const PaymentsScreen: React.FC = () => {
     return payment.status;
   };
 
-  const renderStatusBadge = (payment: Payment, status: string) => {
+  const renderStatusBadge = (payment: Payment, status?: string) => {
     // Calcular o status real do pagamento
-    const realStatus = getPaymentStatus(payment);
+    const realStatus = status || getPaymentStatus(payment);
     
     return (
       <View style={[
@@ -601,7 +693,7 @@ const PaymentsScreen: React.FC = () => {
       title: 'Status',
       width: isTablet ? 100 : 80,
       sortable: true,
-      render: renderStatusBadge,
+      render: (payment: Payment) => renderStatusBadge(payment, payment.status),
     },
     {
       key: 'paid',
@@ -684,11 +776,29 @@ const PaymentsScreen: React.FC = () => {
                 </Text>
               )}
             </View>
-            <Button
-              title="Novo Pagamento"
-              onPress={handleCreatePayment}
-              variant="primary"
-            />
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.exportButton,
+                  (!payments || payments.length === 0) && { opacity: 0.5 }
+                ]}
+                onPress={handleExportCSV}
+                disabled={!payments || payments.length === 0}
+              >
+                <Ionicons name="download" size={16} color="#059669" />
+                <Text style={[
+                  styles.exportButtonText,
+                  (!payments || payments.length === 0) && styles.exportButtonTextDisabled
+                ]}>
+                  Exportar CSV
+                </Text>
+              </TouchableOpacity>
+              <Button
+                title="Novo Pagamento"
+                onPress={handleCreatePayment}
+                variant="primary"
+              />
+            </View>
           </View>
 
           <View style={styles.searchContainer}>
@@ -1075,6 +1185,30 @@ const styles = StyleSheet.create({
   },
   normalPaymentText: {
     color: '#0284C7',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  exportButtonText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  exportButtonTextDisabled: {
+    color: '#9CA3AF',
   },
 });
 
