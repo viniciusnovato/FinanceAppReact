@@ -177,6 +177,59 @@ const ContractForm: React.FC<ContractFormProps> = ({
     }
   };
 
+  // Função para calcular automaticamente a data de fim do contrato
+  const calculateEndDate = (startDate: string, numberOfPayments: string): string => {
+    if (!startDate || !numberOfPayments) return '';
+    
+    const numPayments = parseInt(numberOfPayments);
+    if (isNaN(numPayments) || numPayments <= 0) return '';
+    
+    try {
+      // Parse da data de início (formato DD/MM/YYYY)
+      const [day, month, year] = startDate.split('/');
+      if (!day || !month || !year) return '';
+      
+      const startDateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      // Adicionar o número de meses correspondente às parcelas
+      const endDateObj = new Date(startDateObj);
+      endDateObj.setMonth(startDateObj.getMonth() + numPayments);
+      
+      // Formatar a data de volta para DD/MM/YYYY
+      const endDay = endDateObj.getDate().toString().padStart(2, '0');
+      const endMonth = (endDateObj.getMonth() + 1).toString().padStart(2, '0');
+      const endYear = endDateObj.getFullYear().toString();
+      
+      return `${endDay}/${endMonth}/${endYear}`;
+    } catch (error) {
+      console.error('Erro ao calcular data de fim:', error);
+      return '';
+    }
+  };
+
+  // Função personalizada para atualizar campos com cálculo automático da data de fim
+  const updateFieldWithEndDateCalculation = (field: keyof typeof formData, value: string) => {
+    const newFormData = { ...formData, [field]: value };
+    
+    // Se alterou data de início ou número de parcelas, recalcular data de fim
+    if (field === 'start_date' || field === 'number_of_payments') {
+      const startDate = field === 'start_date' ? value : formData.start_date;
+      const numberOfPayments = field === 'number_of_payments' ? value : formData.number_of_payments;
+      
+      const calculatedEndDate = calculateEndDate(startDate, numberOfPayments);
+      if (calculatedEndDate) {
+        newFormData.end_date = calculatedEndDate;
+      }
+    }
+    
+    setFormData(newFormData);
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
     updateField('client_id', client.id);
@@ -295,7 +348,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
               <DatePicker
                 label="Data de Início *"
                 value={formData.start_date}
-                onDateChange={(value) => updateField('start_date', value)}
+                onDateChange={(value) => updateFieldWithEndDateCalculation('start_date', value)}
                 error={errors.start_date}
                 placeholder="DD/MM/AAAA"
                 mode="date"
@@ -305,7 +358,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
                 label="Data de Término"
                 value={formData.end_date}
                 onDateChange={(value) => updateField('end_date', value)}
-                placeholder="DD/MM/AAAA"
+                placeholder="DD/MM/AAAA (calculada automaticamente)"
                 mode="date"
               />
             </View>
@@ -333,7 +386,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
                 label="Número de Pagamentos"
                 placeholder="Introduza o número de pagamentos"
                 value={formData.number_of_payments}
-                onChangeText={(text) => setFormData({ ...formData, number_of_payments: text })}
+                onChangeText={(text) => updateFieldWithEndDateCalculation('number_of_payments', text)}
                 keyboardType="numeric"
                 error={errors.number_of_payments}
               />
