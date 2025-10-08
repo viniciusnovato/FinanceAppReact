@@ -39,6 +39,10 @@ const ContractFilterChips: React.FC<ContractFilterChipsProps> = ({
       description: 'Descrição',
       number_of_payments_from: 'Parcelas de',
       number_of_payments_to: 'Parcelas até',
+      local: 'Local',
+      area: 'Área',
+      gestora: 'Gestor(a)',
+      medico: 'Médico(a)',
       
       // Status filter
       status: 'Status',

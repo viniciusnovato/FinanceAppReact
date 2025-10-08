@@ -1,6 +1,44 @@
 import { supabase } from '../config/database';
 import { Contract } from '../models';
 
+export interface PaginationOptions {
+  page?: number;
+  limit?: number;
+}
+
+export interface ContractFilters {
+  search?: string;
+  status?: string;
+  client_id?: string;
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  tax_id?: string;
+  contract_number?: string;
+  local?: string;
+  area?: string;
+  gestora?: string;
+  medico?: string;
+  value_min?: number;
+  value_max?: number;
+  start_date_from?: string;
+  start_date_to?: string;
+  end_date_from?: string;
+  end_date_to?: string;
+  created_at_from?: string;
+  created_at_to?: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export class ContractRepository {
   async findAll(): Promise<Contract[]> {
     try {
@@ -18,6 +56,227 @@ export class ContractRepository {
     } catch (error) {
       console.error('Error fetching contracts:', error);
       throw new Error('Failed to fetch contracts');
+    }
+  }
+
+  async findAllPaginated(options: PaginationOptions = {}, filters: ContractFilters = {}): Promise<PaginatedResult<Contract>> {
+    try {
+      const { page = 1, limit = 50 } = options;
+      const { 
+        search,
+        status,
+        client_id,
+        client_name,
+        client_email,
+        client_phone,
+        tax_id,
+        contract_number,
+        local,
+        area,
+        gestora,
+        medico,
+        value_min,
+        value_max,
+        start_date_from,
+        start_date_to,
+        end_date_from,
+        end_date_to,
+        created_at_from,
+        created_at_to
+      } = filters;
+      const offset = (page - 1) * limit;
+
+      // Verificar se há filtros de cliente para determinar o tipo de JOIN
+      const hasClientFilters = client_name || client_email || client_phone || tax_id || 
+                               (search && search.trim().length > 0);
+
+      // Query base para contagem
+      let countQuery = supabase
+        .from('contracts')
+        .select(`
+          *,
+          client:clients${hasClientFilters ? '!inner' : ''}(*)
+        `, { count: 'exact', head: true });
+
+      // Query base para dados
+      let dataQuery = supabase
+        .from('contracts')
+        .select(`
+          *,
+          client:clients${hasClientFilters ? '!inner' : ''}(*),
+          payments(*)
+        `);
+
+      // Aplicar filtros de contrato
+      if (client_id) {
+        countQuery = countQuery.eq('client_id', client_id);
+        dataQuery = dataQuery.eq('client_id', client_id);
+      }
+
+      if (status) {
+        countQuery = countQuery.eq('status', status);
+        dataQuery = dataQuery.eq('status', status);
+      }
+
+      if (contract_number) {
+        countQuery = countQuery.ilike('contract_number', `%${contract_number}%`);
+        dataQuery = dataQuery.ilike('contract_number', `%${contract_number}%`);
+      }
+
+      // Filtros dos novos campos
+      if (local) {
+        countQuery = countQuery.ilike('local', `%${local}%`);
+        dataQuery = dataQuery.ilike('local', `%${local}%`);
+      }
+
+      if (area) {
+        countQuery = countQuery.ilike('area', `%${area}%`);
+        dataQuery = dataQuery.ilike('area', `%${area}%`);
+      }
+
+      if (gestora) {
+        countQuery = countQuery.ilike('gestora', `%${gestora}%`);
+        dataQuery = dataQuery.ilike('gestora', `%${gestora}%`);
+      }
+
+      if (medico) {
+        countQuery = countQuery.ilike('medico', `%${medico}%`);
+        dataQuery = dataQuery.ilike('medico', `%${medico}%`);
+      }
+
+      // Filtros de valor
+      if (value_min !== undefined) {
+        countQuery = countQuery.gte('value', value_min);
+        dataQuery = dataQuery.gte('value', value_min);
+      }
+
+      if (value_max !== undefined) {
+        countQuery = countQuery.lte('value', value_max);
+        dataQuery = dataQuery.lte('value', value_max);
+      }
+
+      // Filtros de data
+      if (start_date_from) {
+        countQuery = countQuery.gte('start_date', start_date_from);
+        dataQuery = dataQuery.gte('start_date', start_date_from);
+      }
+
+      if (start_date_to) {
+        countQuery = countQuery.lte('start_date', start_date_to);
+        dataQuery = dataQuery.lte('start_date', start_date_to);
+      }
+
+      if (end_date_from) {
+        countQuery = countQuery.gte('end_date', end_date_from);
+        dataQuery = dataQuery.gte('end_date', end_date_from);
+      }
+
+      if (end_date_to) {
+        countQuery = countQuery.lte('end_date', end_date_to);
+        dataQuery = dataQuery.lte('end_date', end_date_to);
+      }
+
+      if (created_at_from) {
+        countQuery = countQuery.gte('created_at', created_at_from);
+        dataQuery = dataQuery.gte('created_at', created_at_from);
+      }
+
+      if (created_at_to) {
+        countQuery = countQuery.lte('created_at', created_at_to);
+        dataQuery = dataQuery.lte('created_at', created_at_to);
+      }
+
+      // Filtros de cliente
+      if (client_name) {
+        // Aplicar o filtro client_name usando múltiplos filtros separados
+        countQuery = countQuery.or(`first_name.ilike.%${client_name}%,last_name.ilike.%${client_name}%`, { foreignTable: 'clients' });
+        dataQuery = dataQuery.or(`first_name.ilike.%${client_name}%,last_name.ilike.%${client_name}%`, { foreignTable: 'clients' });
+      }
+
+      if (client_email) {
+        countQuery = countQuery.ilike('clients.email', `%${client_email}%`);
+        dataQuery = dataQuery.ilike('clients.email', `%${client_email}%`);
+      }
+
+      if (client_phone) {
+        countQuery = countQuery.ilike('clients.phone', `%${client_phone}%`);
+        dataQuery = dataQuery.ilike('clients.phone', `%${client_phone}%`);
+      }
+
+      if (tax_id) {
+        countQuery = countQuery.eq('clients.tax_id', tax_id);
+        dataQuery = dataQuery.eq('clients.tax_id', tax_id);
+      }
+
+      // Busca geral - usar abordagem mais simples sem JOIN complexo
+      if (search) {
+        const searchTerm = search.trim();
+        const numericValue = parseFloat(searchTerm);
+        const isNumeric = !isNaN(numericValue) && isFinite(numericValue);
+        
+        // Usar apenas campos da tabela contracts para evitar problemas com JOIN
+        const searchConditions = [
+          `contract_number.ilike.%${searchTerm}%`,
+          `description.ilike.%${searchTerm}%`,
+          `local.ilike.%${searchTerm}%`,
+          `area.ilike.%${searchTerm}%`,
+          `gestora.ilike.%${searchTerm}%`,
+          `medico.ilike.%${searchTerm}%`
+        ];
+        
+        // Adicionar busca por valor se for numérico
+        if (isNumeric && numericValue > 0) {
+          searchConditions.push(`value.eq.${numericValue}`);
+        }
+        
+        const searchFilter = searchConditions.join(',');
+        
+        console.log('Search filter (contracts only):', searchFilter);
+        countQuery = countQuery.or(searchFilter);
+        dataQuery = dataQuery.or(searchFilter);
+      }
+
+      // Executar query de contagem
+      console.log('Executando countQuery...');
+      const { count, error: countError } = await countQuery;
+      console.log('CountQuery result:', { count, countError });
+      if (countError) {
+        console.error('Count error details:', countError);
+        throw countError;
+      }
+
+      // Executar query de dados com paginação
+      console.log('Executando dataQuery...');
+      const { data, error } = await dataQuery
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      
+      console.log('DataQuery result:', { dataLength: data?.length, error });
+      if (error) {
+        console.error('Data error details:', error);
+        throw error;
+      }
+
+      const total = count || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: data || [],
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages
+        }
+      };
+    } catch (error: any) {
+      console.error('Error fetching paginated contracts:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Filters used:', JSON.stringify(filters, null, 2));
+      console.error('Error message:', error?.message || 'No message');
+      console.error('Error code:', error?.code || 'No code');
+      console.error('Error details from Supabase:', error?.details || 'No details');
+      throw new Error('Failed to fetch paginated contracts');
     }
   }
 

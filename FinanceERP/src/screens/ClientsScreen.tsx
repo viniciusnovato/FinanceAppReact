@@ -70,45 +70,56 @@ const ClientsScreen: React.FC = () => {
 
   useEffect(() => {
     loadClients();
-  }, [appliedFilters]);
+  }, [appliedFilters, searchQuery]); // Add searchQuery as dependency
 
-  // Filter clients based on search query
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredClients(clients);
-    } else {
-      const filtered = clients.filter(client => {
-        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
-        const email = client.email?.toLowerCase() || '';
-        const taxId = client.tax_id?.toLowerCase() || '';
-        const query = searchQuery.toLowerCase();
-        
-        return fullName.includes(query) || 
-               email.includes(query) || 
-               taxId.includes(query);
-      });
-      setFilteredClients(filtered);
-    }
-    setCurrentPage(1); // Reset to first page when search changes
-  }, [clients, searchQuery]);
+  // Remove the local filtering useEffect since we're now filtering on backend
+  // useEffect(() => {
+  //   if (!searchQuery.trim()) {
+  //     setFilteredClients(clients);
+  //   } else {
+  //     const filtered = clients.filter(client => {
+  //       const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+  //       const email = client.email?.toLowerCase() || '';
+  //       const taxId = client.tax_id?.toLowerCase() || '';
+  //       const query = searchQuery.toLowerCase();
+  //       
+  //       return fullName.includes(query) || 
+  //              email.includes(query) || 
+  //              taxId.includes(query);
+  //     });
+  //     setFilteredClients(filtered);
+  //   }
+  //   setCurrentPage(1); // Reset to first page when search changes
+  // }, [clients, searchQuery]);
 
   const loadClients = async () => {
     try {
       setIsLoading(true);
       
+      // Prepare filters for backend
+      const filters: any = { ...appliedFilters };
+      
+      // Add search query to filters if present
+      if (searchQuery.trim()) {
+        filters.search = searchQuery.trim();
+      }
+      
       // Use getClients with filters
-      const response = await ApiService.getClients(appliedFilters);
+      const response = await ApiService.getClients(filters);
       
       if (response.success && response.data) {
         setClients(response.data);
+        setFilteredClients(response.data); // Set filtered clients directly from backend
       } else {
         console.warn('API response not successful or no data:', response);
         setClients([]);
+        setFilteredClients([]);
       }
     } catch (error) {
       console.error('Error loading clients:', error);
       Alert.alert('Erro', 'Não foi possível carregar os clientes. Verifique sua conexão.');
       setClients([]);
+      setFilteredClients([]);
     } finally {
       setIsLoading(false);
     }
@@ -235,6 +246,11 @@ const ClientsScreen: React.FC = () => {
       ? `${client.first_name} ${client.last_name}`.trim()
       : client.first_name || '';
     
+    console.log('🔗 Navegando para contratos do cliente:');
+    console.log('🆔 clientId:', client.id);
+    console.log('👤 clientName:', clientName);
+    console.log('📋 Parâmetros de navegação:', { clientId: client.id, clientName: clientName });
+    
     navigation.navigate('Contracts', {
       clientId: client.id,
       clientName: clientName
@@ -262,9 +278,7 @@ const ClientsScreen: React.FC = () => {
     }
 
     try {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `clientes_${timestamp}.csv`;
-      exportClientsToCSV(filteredClients, filename);
+      exportClientsToCSV(filteredClients);
       
       Alert.alert(
         'Sucesso', 

@@ -1,175 +1,93 @@
-const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
 
-const supabaseUrl = 'https://ixqjqfvqjqjqjqjqjqjq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWpxZnZxanFqcWpxanFqcWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU0NzU5MzcsImV4cCI6MjA1MTA1MTkzN30.Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5Zt5';
+const BASE_URL = 'http://localhost:3000';
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function testClientNameFilter() {
-  console.log('\n=== Teste 1: Filtro por nome do cliente (first_name) ===');
+async function testContractFilters() {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        contract:contracts!inner(
-          *,
-          client:clients!inner(*)
-        )
-      `)
-      .ilike('contracts.clients.first_name', '%ALEX%')
-      .limit(5);
+    console.log('🧪 Testando filtros de contratos...\n');
 
-    if (error) {
-      console.error('Erro:', error);
-    } else {
-      console.log(`Encontrados ${data.length} pagamentos para clientes com first_name contendo "ALEX"`);
-      data.forEach(payment => {
-        console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Valor: ${payment.amount}`);
-      });
-    }
-  } catch (err) {
-    console.error('Erro na requisição:', err.message);
-  }
-}
-
-async function testClientLastNameFilter() {
-  console.log('\n=== Teste 2: Filtro por nome do cliente (last_name) ===');
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        contract:contracts!inner(
-          *,
-          client:clients!inner(*)
-        )
-      `)
-      .ilike('contracts.clients.last_name', '%SILVA%')
-      .limit(5);
-
-    if (error) {
-      console.error('Erro:', error);
-    } else {
-      console.log(`Encontrados ${data.length} pagamentos para clientes com last_name contendo "SILVA"`);
-      data.forEach(payment => {
-        console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Valor: ${payment.amount}`);
-      });
-    }
-  } catch (err) {
-    console.error('Erro na requisição:', err.message);
-  }
-}
-
-async function testClientEmailFilter() {
-  console.log('\n=== Teste 3: Filtro por email do cliente ===');
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        contract:contracts!inner(
-          *,
-          client:clients!inner(*)
-        )
-      `)
-      .ilike('contracts.clients.email', '%@gmail.com%')
-      .limit(5);
-
-    if (error) {
-      console.error('Erro:', error);
-    } else {
-      console.log(`Encontrados ${data.length} pagamentos para clientes com email contendo "@gmail.com"`);
-      data.forEach(payment => {
-        console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Email: ${payment.contract.client.email}`);
-      });
-    }
-  } catch (err) {
-    console.error('Erro na requisição:', err.message);
-  }
-}
-
-async function testClientPhoneFilter() {
-  console.log('\n=== Teste 4: Filtro por telefone do cliente ===');
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        contract:contracts!inner(
-          *,
-          client:clients!inner(*)
-        )
-      `)
-      .ilike('contracts.clients.phone', '%123%')
-      .limit(5);
-
-    if (error) {
-      console.error('Erro:', error);
-    } else {
-      console.log(`Encontrados ${data.length} pagamentos para clientes com telefone contendo "123"`);
-      data.forEach(payment => {
-        console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Telefone: ${payment.contract.client.phone}`);
-      });
-    }
-  } catch (err) {
-    console.error('Erro na requisição:', err.message);
-  }
-}
-
-async function testBackendAPI() {
-  console.log('\n=== Teste 5: API do Backend - Filtro por nome do cliente ===');
-  try {
-    const response = await fetch('http://localhost:3000/api/payments?client_name=ALEX&page=1&limit=5');
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log(`API retornou ${result.data.length} pagamentos para cliente "ALEX"`);
-    console.log(`Total: ${result.total}, Página: ${result.page}/${result.totalPages}`);
-    
-    result.data.forEach(payment => {
-      console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Valor: ${payment.amount}`);
+    // 1. Login para obter token
+    console.log('1. Fazendo login...');
+    const loginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
+      email: 'admin@institutoareluna.pt',
+      password: 'admin123'
     });
-  } catch (err) {
-    console.error('Erro na requisição da API:', err.message);
-  }
-}
 
-async function testBackendAPILastName() {
-  console.log('\n=== Teste 6: API do Backend - Filtro por sobrenome do cliente ===');
-  try {
-    const response = await fetch('http://localhost:3000/api/payments?client_name=SILVA&page=1&limit=5');
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const token = loginResponse.data.data.token;
+    console.log('✅ Login realizado com sucesso\n');
+
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+
+    // 2. Testar filtro por local
+    console.log('2. Testando filtro por local...');
+    const localResponse = await axios.get(`${BASE_URL}/api/contracts?local=Lisboa`, { headers });
+    console.log(`✅ Filtro por local: ${localResponse.data.data?.length || 0} contratos encontrados`);
+    if (localResponse.data.data?.length > 0) {
+      console.log(`   Primeiro contrato - Local: ${localResponse.data.data[0].local}`);
     }
+    console.log('');
+
+    // 3. Testar filtro por área
+    console.log('3. Testando filtro por área...');
+    const areaResponse = await axios.get(`${BASE_URL}/api/contracts?area=Saúde`, { headers });
+    console.log(`✅ Filtro por área: ${areaResponse.data.data?.length || 0} contratos encontrados`);
+    if (areaResponse.data.data?.length > 0) {
+      console.log(`   Primeiro contrato - Área: ${areaResponse.data.data[0].area}`);
+    }
+    console.log('');
+
+    // 4. Testar filtro por gestora
+    console.log('4. Testando filtro por gestora...');
+    const gestoraResponse = await axios.get(`${BASE_URL}/api/contracts?gestora=Maria Silva`, { headers });
+    console.log(`✅ Filtro por gestora: ${gestoraResponse.data.data?.length || 0} contratos encontrados`);
+    if (gestoraResponse.data.data?.length > 0) {
+      console.log(`   Primeiro contrato - Gestora: ${gestoraResponse.data.data[0].gestora}`);
+    }
+    console.log('');
+
+    // 5. Testar filtro por médico
+    console.log('5. Testando filtro por médico...');
+    const medicoResponse = await axios.get(`${BASE_URL}/api/contracts?medico=Dr. João Santos`, { headers });
+    console.log(`✅ Filtro por médico: ${medicoResponse.data.data?.length || 0} contratos encontrados`);
+    if (medicoResponse.data.data?.length > 0) {
+      console.log(`   Primeiro contrato - Médico: ${medicoResponse.data.data[0].medico}`);
+    }
+    console.log('');
+
+    // 6. Testar filtros combinados
+    console.log('6. Testando filtros combinados (local + área)...');
+    const combinedResponse = await axios.get(`${BASE_URL}/api/contracts?local=Lisboa&area=Saúde`, { headers });
+    console.log(`✅ Filtros combinados: ${combinedResponse.data.data?.length || 0} contratos encontrados`);
+    console.log('');
+
+    // 7. Testar busca geral
+    console.log('7. Testando busca geral...');
+    const searchResponse = await axios.get(`${BASE_URL}/api/contracts?search=Lisboa`, { headers });
+    console.log(`✅ Busca geral por "Lisboa": ${searchResponse.data.data?.length || 0} contratos encontrados`);
+    console.log('');
+
+    // 8. Listar alguns valores únicos para referência
+    console.log('8. Obtendo todos os contratos para verificar valores únicos...');
+    const allResponse = await axios.get(`${BASE_URL}/api/contracts?limit=100`, { headers });
+    const contracts = allResponse.data.data || [];
     
-    const result = await response.json();
-    console.log(`API retornou ${result.data.length} pagamentos para cliente "SILVA"`);
-    console.log(`Total: ${result.total}, Página: ${result.page}/${result.totalPages}`);
-    
-    result.data.forEach(payment => {
-      console.log(`- ID: ${payment.id}, Cliente: ${payment.contract.client.first_name} ${payment.contract.client.last_name}, Valor: ${payment.amount}`);
-    });
-  } catch (err) {
-    console.error('Erro na requisição da API:', err.message);
+    const locais = [...new Set(contracts.map(c => c.local).filter(Boolean))];
+    const areas = [...new Set(contracts.map(c => c.area).filter(Boolean))];
+    const gestoras = [...new Set(contracts.map(c => c.gestora).filter(Boolean))];
+    const medicos = [...new Set(contracts.map(c => c.medico).filter(Boolean))];
+
+    console.log(`📊 Valores únicos encontrados:`);
+    console.log(`   Locais: ${locais.join(', ')}`);
+    console.log(`   Áreas: ${areas.join(', ')}`);
+    console.log(`   Gestoras: ${gestoras.join(', ')}`);
+    console.log(`   Médicos: ${medicos.join(', ')}`);
+
+  } catch (error) {
+    console.error('❌ Erro ao testar filtros:', error.response?.data || error.message);
   }
 }
 
-async function runAllTests() {
-  console.log('🧪 Iniciando testes de filtros...\n');
-  
-  await testClientNameFilter();
-  await testClientLastNameFilter();
-  await testClientEmailFilter();
-  await testClientPhoneFilter();
-  await testBackendAPI();
-  await testBackendAPILastName();
-  
-  console.log('\n✅ Todos os testes concluídos!');
-}
-
-runAllTests();
+testContractFilters();

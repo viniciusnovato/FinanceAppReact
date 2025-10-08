@@ -32,6 +32,10 @@ export interface ContractAdvancedFiltersData {
   // Contract specific filters
   contract_number?: string;
   description?: string;
+  local?: string;
+  area?: string;
+  gestora?: string;
+  medico?: string;
   number_of_payments_from?: string;
   number_of_payments_to?: string;
   
@@ -268,6 +272,30 @@ const ContractAdvancedFilters: React.FC<ContractAdvancedFiltersProps> = ({
                 onChangeText={(text) => updateFilter('contract_number', text)}
                 placeholder="Digite o número do contrato"
               />
+              <Input
+                label="Local"
+                value={filters.local || ''}
+                onChangeText={(text) => updateFilter('local', text)}
+                placeholder="Digite o local do contrato"
+              />
+              <Input
+                label="Área"
+                value={filters.area || ''}
+                onChangeText={(text) => updateFilter('area', text)}
+                placeholder="Digite a área do contrato"
+              />
+              <Input
+          label="Gestor(a)"
+          value={filters.gestora || ''}
+          onChangeText={(text) => updateFilter('gestora', text)}
+          placeholder="Digite o gestor(a) do contrato"
+        />
+              <Input
+          label="Médico(a)"
+          value={filters.medico || ''}
+          onChangeText={(text) => updateFilter('medico', text)}
+          placeholder="Digite o médico(a) do contrato"
+        />
               <Input
                 label="Descrição"
                 value={filters.description || ''}

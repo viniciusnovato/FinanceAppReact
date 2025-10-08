@@ -21,6 +21,7 @@ import ContractAdvancedFilters, { ContractAdvancedFiltersData } from '../compone
 import ContractFilterChips from '../components/filters/ContractFilterChips';
 import { formatCurrency } from '../utils/currency';
 import { formatDate } from '../utils/dateUtils';
+import { convertDateFiltersToApiFormat } from '../utils/dateFormatUtils';
 import ContractForm from '../components/forms/ContractForm';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ContractDetailsModal } from '../components/ContractDetailsModal';
@@ -37,6 +38,13 @@ type ContractsScreenRouteProp = RouteProp<MainStackParamList, 'Contracts'>;
 const ContractsScreen: React.FC = () => {
   const navigation = useNavigation<ContractsScreenNavigationProp>();
   const route = useRoute<ContractsScreenRouteProp>();
+  
+  // Debug logs para verificar parâmetros de navegação
+  console.log('🚀 ContractsScreen iniciado');
+  console.log('📍 route.params completo:', JSON.stringify(route.params, null, 2));
+  console.log('🆔 clientId recebido:', route.params?.clientId);
+  console.log('👤 clientName recebido:', route.params?.clientName);
+  
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,9 +82,8 @@ const ContractsScreen: React.FC = () => {
     }
   }, [totalPages, currentPage]);
 
-  useEffect(() => {
-    loadContracts();
-  }, []);
+  // Removido useEffect que carregava todos os contratos automaticamente
+  // Agora só carrega quando há clientId ou quando não há parâmetros específicos
 
   // Set initial search query if coming from client selection
   useEffect(() => {
@@ -86,160 +93,106 @@ const ContractsScreen: React.FC = () => {
   }, [route.params?.clientName]);
 
   // Filter contracts based on search query, client filter, and advanced filters
-  const applyFilters = useCallback((contractsList: Contract[]) => {
-    let filtered = contractsList;
+  const applyFilters = useCallback(async (searchQuery: string, clientId?: string, advancedFilters: ContractAdvancedFiltersData = {}) => {
+    // Prepare filters for backend
+    const filters: Record<string, any> = {};
 
-    // Filter by client ID if provided
-    if (route.params?.clientId) {
-      filtered = filtered.filter(contract => contract.client_id === route.params?.clientId);
-    }
-
-    // Apply search query filter
+    // Add search query
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(contract => {
-        // Search by contract number
-        const contractNumber = contract.contract_number?.toLowerCase() || '';
-        
-        // Search by client name
-        const clientName = contract.client 
-          ? `${contract.client.first_name || ''} ${contract.client.last_name || ''}`.toLowerCase().trim()
-          : '';
-        
-        return contractNumber.includes(query) || clientName.includes(query);
-      });
+      filters.search = searchQuery.trim();
     }
 
-    // Apply advanced filters
-     if (Object.keys(advancedFilters).length > 0) {
-       filtered = filtered.filter(contract => {
-         // Date filters
-         if (advancedFilters.start_date_from && contract.start_date) {
-           const startDate = new Date(contract.start_date);
-           const filterDate = new Date(advancedFilters.start_date_from);
-           if (startDate < filterDate) return false;
-         }
-         
-         if (advancedFilters.start_date_to && contract.start_date) {
-           const startDate = new Date(contract.start_date);
-           const filterDate = new Date(advancedFilters.start_date_to);
-           if (startDate > filterDate) return false;
-         }
-         
-         if (advancedFilters.end_date_from && contract.end_date) {
-           const endDate = new Date(contract.end_date);
-           const filterDate = new Date(advancedFilters.end_date_from);
-           if (endDate < filterDate) return false;
-         }
-         
-         if (advancedFilters.end_date_to && contract.end_date) {
-           const endDate = new Date(contract.end_date);
-           const filterDate = new Date(advancedFilters.end_date_to);
-           if (endDate > filterDate) return false;
-         }
-         
-         if (advancedFilters.created_at_from && contract.created_at) {
-           const createdDate = new Date(contract.created_at);
-           const filterDate = new Date(advancedFilters.created_at_from);
-           if (createdDate < filterDate) return false;
-         }
-         
-         if (advancedFilters.created_at_to && contract.created_at) {
-           const createdDate = new Date(contract.created_at);
-           const filterDate = new Date(advancedFilters.created_at_to);
-           if (createdDate > filterDate) return false;
-         }
+    // Add client filter
+    if (clientId) {
+      filters.client_id = clientId;
+    }
 
-         // Value filters
-         if (advancedFilters.value_from && contract.value !== undefined) {
-           const valueFrom = parseFloat(advancedFilters.value_from);
-           if (!isNaN(valueFrom) && contract.value < valueFrom) return false;
-         }
-         
-         if (advancedFilters.value_to && contract.value !== undefined) {
-           const valueTo = parseFloat(advancedFilters.value_to);
-           if (!isNaN(valueTo) && contract.value > valueTo) return false;
-         }
+    // Add advanced filters
+    Object.keys(advancedFilters).forEach(key => {
+      const value = advancedFilters[key as keyof ContractAdvancedFiltersData];
+      if (value !== undefined && value !== null && value !== '') {
+        filters[key] = value;
+      }
+    });
 
-         // Contract specific filters
-         if (advancedFilters.contract_number) {
-           const contractNumber = advancedFilters.contract_number.toLowerCase();
-           if (!contract.contract_number?.toLowerCase().includes(contractNumber)) return false;
-         }
-         
-         if (advancedFilters.description) {
-           const description = advancedFilters.description.toLowerCase();
-           if (!contract.description?.toLowerCase().includes(description)) return false;
-         }
-         
-         if (advancedFilters.number_of_payments_from && contract.number_of_payments !== undefined) {
-           const paymentsFrom = parseInt(advancedFilters.number_of_payments_from);
-           if (!isNaN(paymentsFrom) && contract.number_of_payments < paymentsFrom) return false;
-         }
-         
-         if (advancedFilters.number_of_payments_to && contract.number_of_payments !== undefined) {
-           const paymentsTo = parseInt(advancedFilters.number_of_payments_to);
-           if (!isNaN(paymentsTo) && contract.number_of_payments > paymentsTo) return false;
-         }
+    console.log('🔍 Filtros enviados para o backend:', filters);
+    console.log('📅 Filtros de data específicos:', {
+      start_date_from: filters.start_date_from,
+      start_date_to: filters.start_date_to,
+      end_date_from: filters.end_date_from,
+      end_date_to: filters.end_date_to
+    });
 
-         // Status filter
-         if (advancedFilters.status && advancedFilters.status !== '') {
-           if (contract.status !== advancedFilters.status) return false;
-         }
+    // Converter datas para formato da API (DD/MM/YYYY → YYYY-MM-DD)
+    const filtersWithConvertedDates = convertDateFiltersToApiFormat(filters);
 
-         // Client filters
-         if (advancedFilters.client_name) {
-           const clientName = advancedFilters.client_name.toLowerCase();
-           const contractClientName = contract.client 
-             ? `${contract.client.first_name || ''} ${contract.client.last_name || ''}`.toLowerCase().trim()
-             : '';
-           if (!contractClientName.includes(clientName)) return false;
-         }
-         
-         if (advancedFilters.client_email) {
-           const clientEmail = advancedFilters.client_email.toLowerCase();
-           if (!contract.client?.email?.toLowerCase().includes(clientEmail)) return false;
-         }
-         
-         if (advancedFilters.client_phone) {
-           const clientPhone = advancedFilters.client_phone.toLowerCase();
-           if (!contract.client?.phone?.toLowerCase().includes(clientPhone)) return false;
-         }
-         
-         if (advancedFilters.client_tax_id) {
-           const clientTaxId = advancedFilters.client_tax_id.toLowerCase();
-           if (!contract.client?.tax_id?.toLowerCase().includes(clientTaxId)) return false;
-         }
+    console.log('🔄 Filtros após conversão de datas:', filtersWithConvertedDates);
 
-         return true;
-       });
-     }
+    // Load contracts with filters from backend
+  await loadContracts(filtersWithConvertedDates);
+}, []);
 
-    console.log('Final filtered contracts count:', filtered.length);
-    return filtered;
-  }, [searchQuery, route.params?.clientId, advancedFilters]);
+// Load contracts on component mount or when client filter changes
+useEffect(() => {
+  console.log('🔄 useEffect triggered with route.params:', route.params);
+  // If there's a clientId from navigation, apply client filter immediately
+  if (route.params?.clientId) {
+    console.log('🔍 Loading contracts for clientId:', route.params.clientId);
+    const clientFilters = {
+      client_id: route.params.clientId
+    };
+    console.log('📋 Client filters object:', clientFilters);
+    loadContracts(clientFilters);
+  } else {
+    // Load all contracts if no client filter
+    console.log('🔍 Loading all contracts (no client filter)');
+    loadContracts();
+  }
+}, [route.params?.clientId]);
 
-  // Update filtered contracts when contracts, search query, client filter, or advanced filters change
-  useEffect(() => {
-    const filtered = applyFilters(contracts);
-    setFilteredContracts(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [contracts, applyFilters]);
+// Apply additional filters (search and advanced filters) when they change
+useEffect(() => {
+  // Only apply filters if we have search query or advanced filters
+  if (searchQuery || Object.keys(advancedFilters).length > 0) {
+    console.log('🔍 Applying search/advanced filters');
+    console.log('🔍 Search query:', searchQuery);
+    console.log('🔍 Advanced filters:', advancedFilters);
+    console.log('🔍 Client ID from route:', route.params?.clientId);
+    
+    // Use applyFilters which combines all filters including clientId
+    applyFilters(searchQuery, route.params?.clientId, advancedFilters);
+  } else if (!route.params?.clientId) {
+    // If no filters and no clientId, load all contracts
+    console.log('🔍 No filters active, loading all contracts');
+    loadContracts();
+  }
+  // Note: If we have clientId but no other filters, the clientId useEffect will handle it
+}, [searchQuery, advancedFilters]);
 
-  const loadContracts = async () => {
+  const loadContracts = async (filters?: Record<string, any>) => {
     try {
       setIsLoading(true);
-      const response = await ApiService.getContracts();
+      console.log('📡 Calling ApiService.getContracts with filters:', filters);
+      const response = await ApiService.getContracts(filters);
+      console.log('📡 API Response received:', response);
+      console.log('📡 Response success:', response.success);
+      console.log('📡 Response data length:', response.data?.length || 0);
+      
       if (response.success && response.data) {
+        console.log('✅ Setting contracts:', response.data.length, 'contracts');
         setContracts(response.data);
+        setFilteredContracts(response.data);
+        setCurrentPage(1); // Reset to first page when filters change
       } else {
-        console.warn('API response not successful or no data:', response);
+        console.warn('⚠️ API response not successful or no data:', response);
         setContracts([]);
+        setFilteredContracts([]);
       }
     } catch (error) {
-      console.error('Error loading contracts:', error);
+      console.error('❌ Error loading contracts:', error);
       Alert.alert('Erro', 'Não foi possível carregar os contratos. Verifique sua conexão.');
       setContracts([]);
+      setFilteredContracts([]);
     } finally {
       setIsLoading(false);
     }
@@ -497,9 +450,32 @@ const ContractsScreen: React.FC = () => {
       width: isTablet ? 100 : 70,
     },
     {
-      key: 'description',
-      title: 'Descrição',
+      key: 'local',
+      title: 'Local',
       sortable: true,
+      width: isTablet ? 120 : 90,
+      render: (contract: Contract) => contract.local || 'N/A',
+    },
+    {
+      key: 'area',
+      title: 'Área',
+      sortable: true,
+      width: isTablet ? 100 : 80,
+      render: (contract: Contract) => contract.area || 'N/A',
+    },
+    {
+      key: 'gestora',
+      title: 'Gestor(a)',
+      sortable: true,
+      width: isTablet ? 120 : 90,
+      render: (contract: Contract) => contract.gestora || 'N/A',
+    },
+    {
+      key: 'medico',
+      title: 'Médico(a)',
+      sortable: true,
+      width: isTablet ? 120 : 90,
+      render: (contract: Contract) => contract.medico || 'N/A',
     },
     {
       key: 'client_name',

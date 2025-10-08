@@ -108,8 +108,25 @@ class ApiService {
   }
 
   // Contract methods
-  async getContracts(): Promise<ApiResponse<Contract[]>> {
-    return this.request('/contracts');
+  async getContracts(filters?: Record<string, any>): Promise<ApiResponse<Contract[]>> {
+    let endpoint = '/contracts';
+    if (filters && Object.keys(filters).length > 0) {
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach(key => {
+        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+          params.append(key, filters[key].toString());
+        }
+      });
+      const queryString = params.toString();
+      if (queryString) {
+        endpoint = `/contracts?${queryString}`;
+      }
+    }
+    
+    console.log('🌐 URL da requisição:', endpoint);
+    console.log('📋 Filtros processados:', filters);
+    
+    return this.request(endpoint);
   }
 
   async getContract(id: string): Promise<ApiResponse<Contract>> {

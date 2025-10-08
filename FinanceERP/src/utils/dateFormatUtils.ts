@@ -55,7 +55,11 @@ export const convertDateFiltersToApiFormat = (filters: Record<string, any>): Rec
     'paid_date_from',
     'paid_date_to',
     'created_at_from',
-    'created_at_to'
+    'created_at_to',
+    'start_date_from',
+    'start_date_to',
+    'end_date_from',
+    'end_date_to'
   ];
 
   dateFields.forEach(field => {

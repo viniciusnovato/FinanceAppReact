@@ -34,6 +34,10 @@ export interface Contract {
   down_payment?: number;
   number_of_payments?: number;
   positive_balance?: number;
+  local?: string;
+  area?: string;
+  gestora?: string;
+  medico?: string;
   created_at: string;
   updated_at: string;
   client?: Client;

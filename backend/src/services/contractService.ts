@@ -1,4 +1,4 @@
-import { ContractRepository } from '../repositories/contractRepository';
+import { ContractRepository, PaginationOptions, ContractFilters, PaginatedResult } from '../repositories/contractRepository';
 import { ClientRepository } from '../repositories/clientRepository';
 import { PaymentRepository } from '../repositories/paymentRepository';
 import { Contract, Payment } from '../models';
@@ -17,6 +17,10 @@ export class ContractService {
 
   async getAllContracts(): Promise<Contract[]> {
     return this.contractRepository.findAll();
+  }
+
+  async getAllContractsPaginated(options: PaginationOptions = {}, filters: ContractFilters = {}): Promise<PaginatedResult<Contract>> {
+    return this.contractRepository.findAllPaginated(options, filters);
   }
 
   async getContractById(id: string): Promise<Contract> {

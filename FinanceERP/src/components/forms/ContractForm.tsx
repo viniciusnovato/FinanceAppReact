@@ -34,6 +34,10 @@ const ContractForm: React.FC<ContractFormProps> = ({
     client_id: '',
     contract_number: '',
     description: '',
+    local: '',
+    area: '',
+    gestora: '',
+    medico: '',
     value: '',
     start_date: '',
     end_date: '',
@@ -70,6 +74,10 @@ const ContractForm: React.FC<ContractFormProps> = ({
         client_id: contract.client_id || '',
         contract_number: contract.contract_number || '',
         description: contract.description || '',
+        local: contract.local || '',
+        area: contract.area || '',
+        gestora: contract.gestora || '',
+        medico: contract.medico || '',
         value: contract.value?.toString() || '',
         start_date: contract.start_date || '',
         end_date: contract.end_date || '',
@@ -91,6 +99,10 @@ const ContractForm: React.FC<ContractFormProps> = ({
         client_id: '',
         contract_number: '',
         description: '',
+        local: '',
+        area: '',
+        gestora: '',
+        medico: '',
         value: '',
         start_date: '',
         end_date: '',
@@ -124,8 +136,20 @@ const ContractForm: React.FC<ContractFormProps> = ({
       newErrors.client_id = 'Cliente é obrigatório';
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Descrição é obrigatória';
+    if (!formData.local.trim()) {
+      newErrors.local = 'Local é obrigatório';
+    }
+
+    if (!formData.area.trim()) {
+      newErrors.area = 'Área é obrigatória';
+    }
+
+    if (!formData.gestora.trim()) {
+      newErrors.gestora = 'Gestor(a) é obrigatório(a)';
+    }
+
+    if (!formData.medico.trim()) {
+      newErrors.medico = 'Médico(a) é obrigatório(a)';
     }
 
     if (!formData.value || isNaN(Number(formData.value)) || Number(formData.value) <= 0) {
@@ -323,11 +347,42 @@ const ContractForm: React.FC<ContractFormProps> = ({
               />
 
               <Input
-                label="Descrição *"
+                label="Local *"
+                value={formData.local}
+                onChangeText={(value) => updateField('local', value)}
+                error={errors.local}
+                placeholder="Digite o local do contrato"
+              />
+
+              <Input
+                label="Área *"
+                value={formData.area}
+                onChangeText={(value) => updateField('area', value)}
+                error={errors.area}
+                placeholder="Digite a área do contrato"
+              />
+
+              <Input
+              label="Gestor(a) *"
+              value={formData.gestora}
+              onChangeText={(value) => updateField('gestora', value)}
+              error={errors.gestora}
+              placeholder="Digite o gestor(a) do contrato"
+            />
+
+            <Input
+              label="Médico(a) *"
+              value={formData.medico}
+              onChangeText={(value) => updateField('medico', value)}
+              error={errors.medico}
+              placeholder="Digite o médico(a) do contrato"
+            />
+
+              <Input
+                label="Descrição"
                 value={formData.description}
                 onChangeText={(value) => updateField('description', value)}
-                error={errors.description}
-                placeholder="Digite a descrição do contrato"
+                placeholder="Digite a descrição do contrato (opcional)"
                 multiline
                 numberOfLines={3}
               />
