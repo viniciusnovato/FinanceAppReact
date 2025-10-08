@@ -629,7 +629,7 @@ const PaymentsScreen: React.FC = () => {
       sortable: false,
       render: (payment: Payment) => 
         payment.contract?.client ? 
-          `${payment.contract.client.first_name} ${payment.contract.client.last_name}` : 'N/A',
+          payment.contract.client.first_name : 'N/A',
     },
     {
       key: 'amount',

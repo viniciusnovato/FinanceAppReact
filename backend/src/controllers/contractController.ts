@@ -40,6 +40,9 @@ export class ContractController {
         end_date_to: req.query.end_date_to as string,
         created_at_from: req.query.created_at_from as string,
         created_at_to: req.query.created_at_to as string,
+        // Filtros de quantidade de parcelas
+        number_of_payments_from: req.query.number_of_payments_from ? parseInt(req.query.number_of_payments_from as string) : undefined,
+        number_of_payments_to: req.query.number_of_payments_to ? parseInt(req.query.number_of_payments_to as string) : undefined,
       };
 
       console.log('📋 Filtros extraídos:', filters);

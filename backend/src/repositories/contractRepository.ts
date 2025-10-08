@@ -21,6 +21,8 @@ export interface ContractFilters {
   medico?: string;
   value_min?: number;
   value_max?: number;
+  number_of_payments_from?: number;
+  number_of_payments_to?: number;
   start_date_from?: string;
   start_date_to?: string;
   end_date_from?: string;
@@ -77,6 +79,8 @@ export class ContractRepository {
         medico,
         value_min,
         value_max,
+        number_of_payments_from,
+        number_of_payments_to,
         start_date_from,
         start_date_to,
         end_date_from,
@@ -153,6 +157,17 @@ export class ContractRepository {
       if (value_max !== undefined) {
         countQuery = countQuery.lte('value', value_max);
         dataQuery = dataQuery.lte('value', value_max);
+      }
+
+      // Filtros de quantidade de parcelas
+      if (number_of_payments_from !== undefined) {
+        countQuery = countQuery.gte('number_of_payments', number_of_payments_from);
+        dataQuery = dataQuery.gte('number_of_payments', number_of_payments_from);
+      }
+
+      if (number_of_payments_to !== undefined) {
+        countQuery = countQuery.lte('number_of_payments', number_of_payments_to);
+        dataQuery = dataQuery.lte('number_of_payments', number_of_payments_to);
       }
 
       // Filtros de data
