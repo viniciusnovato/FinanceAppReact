@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Client, Contract, Payment, User, ApiResponse, DashboardStats } from '../types';
 
-const API_BASE_URL = 'http://localhost:3000/api'; // Backend URL
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://your-backend-domain.vercel.app/api' 
+  : 'http://localhost:3000/api'; // Backend URL
 
 class ApiService {
   private async getAuthHeaders(): Promise<Record<string, string>> {
