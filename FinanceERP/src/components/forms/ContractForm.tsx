@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Contract, Client } from '../../types';
@@ -15,6 +16,7 @@ import NumericInput from '../common/NumericInput';
 import Button from '../common/Button';
 import DatePicker from '../common/DatePicker';
 import ApiService from '../../services/api';
+import { PAYMENT_METHODS } from '../../constants/paymentMethods';
 
 interface ContractFormProps {
   visible: boolean;
@@ -47,12 +49,52 @@ const ContractForm: React.FC<ContractFormProps> = ({
     notes: '',
     down_payment: '',
     number_of_payments: '',
+    payment_method: 'DD', // Método padrão
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clients, setClients] = useState<Client[]>([]);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  // Calcular prévia do valor da parcela
+  const calculateInstallmentPreview = (): { 
+    installmentValue: number; 
+    hasVariation: boolean;
+    minValue: number;
+    maxValue: number;
+  } | null => {
+    const totalValue = parseFloat(formData.value) || 0;
+    const downPayment = parseFloat(formData.down_payment) || 0;
+    const numberOfPayments = parseInt(formData.number_of_payments) || 0;
+
+    if (totalValue <= 0 || numberOfPayments <= 0) {
+      return null;
+    }
+
+    const remainingValue = totalValue - downPayment;
+    if (remainingValue <= 0) {
+      return null;
+    }
+
+    // Simular o algoritmo do backend (em centavos)
+    const totalCents = Math.round(remainingValue * 100);
+    const baseInstallmentCents = Math.floor(totalCents / numberOfPayments);
+    const remainderCents = totalCents - (baseInstallmentCents * numberOfPayments);
+
+    const minValue = baseInstallmentCents / 100;
+    const maxValue = (baseInstallmentCents + 1) / 100;
+    const hasVariation = remainderCents > 0;
+
+    return {
+      installmentValue: minValue,
+      hasVariation,
+      minValue,
+      maxValue
+    };
+  };
+
+  const installmentPreview = calculateInstallmentPreview();
 
   // Opções de status para contratos
   const statusOptions = [
@@ -62,6 +104,9 @@ const ContractForm: React.FC<ContractFormProps> = ({
     { value: 'cancelado', label: 'Cancelado' },
     { value: 'jurídico', label: 'Jurídico' },
   ];
+
+  // Opções de método de pagamento
+  const paymentMethodOptions = PAYMENT_METHODS;
 
   useEffect(() => {
     if (visible) {
@@ -87,6 +132,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
         notes: contract.notes || '',
         down_payment: contract.down_payment?.toString() || '',
         number_of_payments: contract.number_of_payments?.toString() || '',
+        payment_method: 'DD',
       });
       
       // Find and set selected client
@@ -112,6 +158,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
         notes: '',
         down_payment: '',
         number_of_payments: '',
+        payment_method: 'DD',
       });
       setSelectedClient(null);
     }
@@ -446,6 +493,84 @@ const ContractForm: React.FC<ContractFormProps> = ({
                 maxDecimalPlaces={0}
                 error={errors.number_of_payments}
               />
+
+              {/* Método de Pagamento das Parcelas - Apenas para novos contratos */}
+              {!contract && (
+                <View>
+                  <Text style={styles.inputLabel}>Método de Pagamento das Parcelas</Text>
+                  <View style={styles.paymentMethodContainer}>
+                    {paymentMethodOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.paymentMethodOption,
+                          formData.payment_method === option.value && styles.paymentMethodOptionSelected,
+                        ]}
+                        onPress={() => updateField('payment_method', option.value)}
+                      >
+                        {option.isCustomImage ? (
+                          <Image
+                            source={option.icon as any}
+                            resizeMode="contain"
+                            style={styles.paymentMethodIcon}
+                          />
+                        ) : (
+                          <Ionicons 
+                            name={option.icon as any} 
+                            size={20} 
+                            color={formData.payment_method === option.value ? '#FFFFFF' : '#64748B'} 
+                          />
+                        )}
+                        <Text
+                          style={[
+                            styles.paymentMethodText,
+                            formData.payment_method === option.value && styles.paymentMethodTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Prévia do Valor da Parcela - Apenas para novos contratos */}
+              {!contract && installmentPreview && (
+                <View style={styles.installmentPreview}>
+                  <View style={styles.previewHeader}>
+                    <Ionicons name="calculator-outline" size={20} color="#3B82F6" />
+                    <Text style={styles.previewTitle}>Prévia do Valor da Parcela</Text>
+                  </View>
+                  
+                  {!installmentPreview.hasVariation ? (
+                    <View style={styles.previewContent}>
+                      <Text style={styles.previewLabel}>Todas as parcelas:</Text>
+                      <Text style={styles.previewValue}>
+                        €{installmentPreview.installmentValue.toFixed(2)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.previewContent}>
+                      <View style={styles.previewRow}>
+                        <Text style={styles.previewLabel}>Maioria das parcelas:</Text>
+                        <Text style={styles.previewValue}>
+                          €{installmentPreview.minValue.toFixed(2)}
+                        </Text>
+                      </View>
+                      <View style={styles.previewRow}>
+                        <Text style={styles.previewLabel}>Últimas parcelas:</Text>
+                        <Text style={styles.previewValue}>
+                          €{installmentPreview.maxValue.toFixed(2)}
+                        </Text>
+                      </View>
+                      <Text style={styles.previewNote}>
+                        * Algumas parcelas terão +€0.01 para garantir o valor total exato
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
 
             <View style={styles.section}>
@@ -659,6 +784,83 @@ const styles = StyleSheet.create({
   },
   statusOptionTextSelected: {
     color: '#FFFFFF',
+  },
+  // Payment method styles
+  paymentMethodContainer: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  paymentMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    gap: 12,
+  },
+  paymentMethodOptionSelected: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  paymentMethodText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    flex: 1,
+  },
+  paymentMethodTextSelected: {
+    color: '#FFFFFF',
+  },
+  paymentMethodIcon: {
+    width: 20,
+    height: 20,
+  },
+  // Installment preview styles
+  installmentPreview: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  previewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+  previewContent: {
+    gap: 8,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  previewLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  previewValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  previewNote: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 

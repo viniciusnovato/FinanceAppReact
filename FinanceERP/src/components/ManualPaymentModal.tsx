@@ -6,11 +6,13 @@ import {
   Alert,
   TouchableOpacity,
   TextInput,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './common/Modal';
 import { formatCurrency } from '../utils/currency';
 import { formatNumberInput } from '../utils/numberFormat';
+import { PAYMENT_METHODS } from '../constants/paymentMethods';
 
 interface ManualPaymentModalProps {
   visible: boolean;
@@ -41,24 +43,8 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Payment method options - same as PaymentForm
-  const paymentMethodOptions = [
-    { value: 'DD', label: 'DD' },
-    { value: 'TRF', label: 'Transferência' },
-    { value: 'Stripe', label: 'Stripe' },
-    { value: 'PP', label: 'PP' },
-    { value: 'Receção', label: 'Receção' },
-    { value: 'TRF ou RECEÇÃO', label: 'TRF ou Receção' },
-    { value: 'TRF - OP', label: 'TRF - OP' },
-    { value: 'bank_transfer', label: 'Transferência Bancária' },
-    { value: 'Cheque', label: 'Cheque' },
-    { value: 'Cheque/Misto', label: 'Cheque/Misto' },
-    { value: 'Aditamento', label: 'Aditamento' },
-    { value: 'DD + TB', label: 'DD + TB' },
-    { value: 'Ordenado', label: 'Ordenado' },
-    { value: 'Numerário', label: 'Numerário' },
-    { value: 'MB Way', label: 'MB Way' },
-  ];
+  // Payment method options
+  const paymentMethodOptions = PAYMENT_METHODS;
 
   // Reset form when modal opens - MUST be called before any early returns
   useEffect(() => {
@@ -66,9 +52,10 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
       console.log('🔍 Modal ficou visível, resetando form');
       setPaymentAmount('');
       setUsePositiveBalance('0');
-      setSelectedPaymentMethod('');
+      // Carregar o método de pagamento da parcela, se existir
+      setSelectedPaymentMethod(payment?.payment_method || '');
     }
-  }, [visible]);
+  }, [visible, payment?.payment_method]);
 
   console.log('🔍 ManualPaymentModal renderizado:', { 
     visible, 
@@ -343,14 +330,29 @@ export const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                 key={option.value}
                 style={[
                   styles.paymentMethodOption,
-                  selectedPaymentMethod === option.value && styles.paymentMethodOptionSelected
+                  selectedPaymentMethod === option.value && styles.paymentMethodOptionSelected,
                 ]}
                 onPress={() => setSelectedPaymentMethod(option.value)}
               >
-                <Text style={[
-                  styles.paymentMethodOptionText,
-                  selectedPaymentMethod === option.value && styles.paymentMethodOptionTextSelected
-                ]}>
+                {option.isCustomImage ? (
+                  <Image
+                    source={option.icon as any}
+                    resizeMode="contain"
+                    style={styles.paymentMethodIcon}
+                  />
+                ) : (
+                  <Ionicons 
+                    name={option.icon as any} 
+                    size={18} 
+                    color={selectedPaymentMethod === option.value ? '#FFFFFF' : '#64748B'} 
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.paymentMethodText,
+                    selectedPaymentMethod === option.value && styles.paymentMethodTextSelected,
+                  ]}
+                >
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -741,29 +743,35 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   paymentMethodContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
   },
   paymentMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
+    gap: 12,
   },
   paymentMethodOptionSelected: {
     backgroundColor: '#3B82F6',
     borderColor: '#3B82F6',
   },
-  paymentMethodOptionText: {
+  paymentMethodText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#374151',
+    flex: 1,
   },
-  paymentMethodOptionTextSelected: {
+  paymentMethodTextSelected: {
     color: '#FFFFFF',
+  },
+  paymentMethodIcon: {
+    width: 18,
+    height: 18,
   },
 });
